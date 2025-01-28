@@ -2,6 +2,13 @@ make_fn_safe = function(txt){
   str_replace_all(txt, "[ /]", "_")
 }
 
+#' @title Wrapper for CMAPLE
+#'
+#' @param sequences named character vector of DNA/RNA sequences
+#' @param tree_path path to save tree
+#' @param starting_tree_path path to starting tree containing a subset of the sequences
+#' @param freeze_starting_tree should the relationships in the starting tree be preserved?
+#'
 #'@export
 make_cmaple_tree = function(sequences, tree_path, starting_tree_path = NULL, freeze_starting_tree = F){
 
@@ -64,7 +71,7 @@ make_cmaple_tree = function(sequences, tree_path, starting_tree_path = NULL, fre
 
 
 
-#' Run IQ-TREE
+#' @title Wrapper for IQ-TREE
 #'
 #' For details, see http://www.iqtree.org/doc/
 #'
@@ -72,10 +79,10 @@ make_cmaple_tree = function(sequences, tree_path, starting_tree_path = NULL, fre
 #' (i.e., aligned sequences) of class DNAbin
 #' @param wd Path to working directory. The alignment and IQ-TREE intermediate files
 #' and results will be written here.
-#' @param bb Optional; number of ultrafast bootstrap replicates to run.
-#' @param nt Optional; number of cores to use. Set to "AUTO" to determine automatically.
-#' @param alrt Optional; number of SH-aLRT tests to run.
-#' @param m Optional; specify model. If no model is given, ModelTest will be run
+#' @param bootstrap_replicates Optional; number of ultrafast bootstrap replicates to run.
+#' @param num_cores Optional; number of cores to use. Set to "AUTO" to determine automatically.
+#' @param SH_aLRT_replicates Optional; number of SH-aLRT tests to run.
+#' @param model Optional; specify model. If no model is given, ModelTest will be run
 #' to identify the best model for the data.
 #' @param redo Logical; should the analysis be redone from scratch if output from
 #' previous runs is present?
@@ -93,19 +100,19 @@ make_cmaple_tree = function(sequences, tree_path, starting_tree_path = NULL, fre
 #' plot(tree)
 #' # Check the optimum number of cores to use for GTR+I+G model
 #' iq_tree(tempdir(), woodmouse, m = "GTR+I+G", nt = "AUTO", echo = TRUE, redo = TRUE)
-make_iq_tree <- function(alignment,
+make_iq_tree <- function(sequences,
                           wd,
-                          bb = NULL,
-                          nt = NULL,
-                          alrt = NULL,
-                          m = NULL,
+                          bootstrap_replicates = NULL,
+                          num_cores = NULL,
+                          SH_aLRT_replicates = NULL,
+                          model = NULL,
                           redo = FALSE,
                           echo = FALSE,
                           ...) {
 
-  assertthat::assert_that(inherits(alignment, "DNAbin"),
+  assertthat::assert_that(inherits(sequences, "DNAbin"),
                           msg = "alignment must be of class 'DNAbin'")
-  assertthat::assert_that(is.matrix(alignment),
+  assertthat::assert_that(is.matrix(sequences),
                           msg = "alignment must be a matrix (not a list of unaligned sequences)")
 
   assertthat::assert_that(assertthat::is.dir(wd))
@@ -114,17 +121,17 @@ make_iq_tree <- function(alignment,
 
   assertthat::assert_that(is.logical(redo))
 
-  if(!is.null(bb))
-    assertthat::assert_that(assertthat::is.number(bb))
+  if(!is.null(bootstrap_replicates))
+    assertthat::assert_that(assertthat::is.number(bootstrap_replicates))
 
-  if(!is.null(alrt))
-    assertthat::assert_that(assertthat::is.number(alrt))
+   if(!is.null(SH_aLRT_replicates))
+     assertthat::assert_that(assertthat::is.number(SH_aLRT_replicates))
 
-  if(!is.null(nt))
-    assertthat::assert_that(assertthat::is.number(nt) | assertthat::is.string(nt))
+  if(!is.null(num_cores))
+    assertthat::assert_that(assertthat::is.number(num_cores) | assertthat::is.string(num_cores))
 
-  if(!is.null(m))
-    assertthat::assert_that(assertthat::is.string(m))
+  if(!is.null(model))
+    assertthat::assert_that(assertthat::is.string(model))
 
   wd <- fs::path_norm(wd)
 
@@ -142,19 +149,19 @@ make_iq_tree <- function(alignment,
   # Write alignment to working directory in phylip format
   aln_path <- "aln.fa"
 
-  ape::write.FASTA(x = alignment, file = paste0(wd, "/", aln_path))
+  ape::write.FASTA(x = sequences, file = paste0(wd, "/", aln_path))
 
   # Set up arguments
   iqtree_arguments <- c(
     "-s", aln_path,
-    if(!is.null(bb)) "-bb",
-    bb,
-    if(!is.null(alrt)) "-alrt",
-    alrt,
-    if(!is.null(nt)) "-nt",
-    nt,
-    if(!is.null(m)) "-m",
-    m,
+    if(!is.null(bootstrap_replicates)) "-bb",
+    bootstrap_replicates,
+     if(!is.null(SH_aLRT_replicates)) "-alrt",
+     SH_aLRT_replicates,
+    if(!is.null(num_cores)) "-nt",
+    num_cores,
+    if(!is.null(model)) "-m",
+    model,
     if(isTRUE(redo)) "-redo"
   )
 
@@ -176,5 +183,4 @@ make_iq_tree <- function(alignment,
   tree_path <- paste0(wd, "/", aln_path, ".treefile")
 
   ape::read.tree(tree_path)
-
 }
