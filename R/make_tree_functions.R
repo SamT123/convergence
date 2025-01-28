@@ -1,7 +1,3 @@
-make_fn_safe = function(txt){
-  str_replace_all(txt, "[ /]", "_")
-}
-
 #' @title Wrapper for CMAPLE
 #'
 #' @param sequences named character vector of DNA/RNA sequences
@@ -33,7 +29,7 @@ make_cmaple_tree = function(sequences, tree_path, starting_tree_path = NULL, fre
   old_path <- Sys.getenv("PATH")
   Sys.setenv(PATH = paste(old_path, "~/miniforge3/envs/treebuild/bin/", sep = ":"))
 
-  myUtils::fast_fasta.write(
+  seqUtils::write_fast_fasta(
     sequences,
     names(sequences),
     path = fasta_path
@@ -72,8 +68,6 @@ make_cmaple_tree = function(sequences, tree_path, starting_tree_path = NULL, fre
 
 
 #' @title Wrapper for IQ-TREE
-#'
-#' For details, see http://www.iqtree.org/doc/
 #'
 #' @param alignment DNA alignment to use for phylogenetic analysis. Must be matrix
 #' (i.e., aligned sequences) of class DNAbin
@@ -183,4 +177,8 @@ make_iq_tree <- function(sequences,
   tree_path <- paste0(wd, "/", aln_path, ".treefile")
 
   ape::read.tree(tree_path)
+}
+
+make_fn_safe = function(txt){
+  str_replace_all(txt, "[ /]", "_")
 }
