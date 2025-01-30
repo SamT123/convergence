@@ -2,8 +2,11 @@
 
 export(addASRusher)
 export(addEstimatedNodeDates)
-export(getAASubstitutionRatios)
-export(makeOverallTreeInfo)
+export(getCladeSizeCDFs)
+export(getInfoAboutNodes)
+export(getSubstitutionRatios)
+export(getTimeIntervalSubstitutionRatios)
+export(getTreeSizeAndNucRates)
 export(make_cmaple_tree)
 import(magrittr)
 import(tidyverse)

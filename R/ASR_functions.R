@@ -76,7 +76,7 @@ addSynonymousInfo = function(tree_and_sequences){
 addAaSequence = function(tree_and_sequences, aa_ref){
   tree_and_sequences$tree_tibble$aa_sequence = NA
   tree_and_sequences$tree_tibble$aa_sequence[1:Ntip(tree_and_sequences$tree)] =
-    suppressMessages(
+    suppressWarnings(
       seqUtils::translate(
         tree_and_sequences$tree_tibble$dna_sequence[
           1:Ntip(tree_and_sequences$tree)],
@@ -111,19 +111,19 @@ do_ASR_usher = function(
     file = paste0(dir, "/tree.nw")
   )
 
-  myUtils::fast_fasta.write(
+  seqUtils::write_fast_fasta(
     sequences,
     names(sequences),
     paste0(dir, "/sequences.fasta")
   )
 
-  myUtils::fast_fasta.write(
+  seqUtils::write_fast_fasta(
     nuc_ref[[1]],
     "ref",
     paste0(dir, "/nuc_ref.fasta")
   )
 
-  myUtils::add_to_PATH("/Users/samturner/miniforge3/envs/intel_env/bin/")
+  add_to_PATH("/Users/samturner/miniforge3/envs/intel_env/bin/")
   system(
     paste0(
       "faToVcf ",
@@ -179,6 +179,11 @@ do_ASR_usher = function(
     tree = castor::read_tree(file = paste0(dir, "/new_tree.nw")),
     asr = readr::read_tsv(paste0(dir, "/out.tsv"))
   )
+}
+
+add_to_PATH = function(path){
+  old_path <- Sys.getenv("PATH")
+  Sys.setenv(PATH = paste(old_path, path, sep = ":"))
 }
 
 ladderizeTreeAndTib = function(tree, tib){
@@ -247,6 +252,20 @@ getParentsFromNodelist = function(parents, node){
   }
   node
 }
+
+getDescendants = function(phy, node){
+
+  if (node <= Ntip(phy)) return(NULL)
+
+  st = castor::get_subtree_at_node(
+    phy,
+    node = node - Ntip(phy)
+  )
+
+  o = c(st$new2old_tip, st$new2old_node + Ntip(phy))
+  o[o!= node]
+}
+
 
 reconstructNodeSequences = function(tree_tibble){
   # browser()
