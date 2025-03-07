@@ -8,7 +8,7 @@ getCladeSizeCDFs(
   tree_and_sequences,
   tree_tibble_for_node_search = tree_and_sequences$tree_tibble,
   aa_substitutions,
-  nt_mutations,
+  syn_nuc_mutations,
   n_bootstraps = 100,
   max_log2_clade_size = 10,
   log2_clade_size_resolution = 0.1
@@ -21,7 +21,7 @@ getCladeSizeCDFs(
 
 \item{aa_substitutions}{...}
 
-\item{nt_mutations}{...}
+\item{syn_nuc_mutations}{...}
 
 \item{n_bootstraps}{...}
 

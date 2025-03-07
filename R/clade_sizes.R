@@ -17,29 +17,22 @@ getCDF = function(
   cdf
 }
 
-
-#' Distribution of clade sizes compared to synonymous expectation
-#'
-#' @param tree_and_sequences ...
-#' @param tree_tibble_for_node_search Perhaps you want to restrict node search to a subset of the tree in tree_and_sequences. Because tree_and_sequences$tree is used to count descendant tips, the "intact" tree_and_sequences (i.e. without tree_and_sequences being subsetted, meaning `tree` corresponds exactly to `tree_tibble`) must also be passed
-#' @param aa_substitutions ...
-#' @param nt_mutations ...
-#' @param n_bootstraps ...
-#' @param max_log2_clade_size ...
-#' @param log2_clade_size_resolution ...
-#'
-#' @return ...
-#' @export
-getCladeSizeCDFs = function(
+getAllCladeSizes = function(
     tree_and_sequences,
     tree_tibble_for_node_search = tree_and_sequences$tree_tibble,
-    aa_substitutions,
-    nt_mutations,
-    n_bootstraps = 100,
-    max_log2_clade_size = 10,
-    log2_clade_size_resolution = 0.1
+    ps = F
 ){
+  aa_clade_sizes = rep(
+    list(NULL),
+    length(unique(unlist(tree_tibble_for_node_search$aa_mutations_nonsyn)))
+  ) %>%
+    setNames(unique(unlist(tree_tibble_for_node_search$aa_mutations_nonsyn)))
 
+  syn_nt_clade_sizes = rep(
+    list(NULL),
+    length(unique(unlist(tree_tibble_for_node_search$nt_mutations_syn)))
+  ) %>%
+    setNames(unique(unlist(tree_tibble_for_node_search$nt_mutations_syn)))
 
   tree_and_sequences$tree_tibble$tips_per_node = c(
     rep(1, Ntip(tree_and_sequences$tree)),
@@ -51,31 +44,166 @@ getCladeSizeCDFs = function(
     as.character(tree_and_sequences$tree_tibble$node)
   )
 
-  all_synonymous_nodes = tree_tibble_for_node_search %>%
-    unnest(nt_mutations_syn) %>%
-    pluck("node")
+  tips_per_node_tree_tibble_for_node_search = tips_per_node[
+    tree_tibble_for_node_search$node
+  ]
 
-  all_synonymous_clade_sizes = tips_per_node[as.character(all_synonymous_nodes)]
+  for (i in seq_along(tree_tibble_for_node_search$aa_mutations_nonsyn)){
+    # if (i %%1000 == 0) message(i)
+    mutations = unlist(tree_tibble_for_node_search$aa_mutations_nonsyn[[i]])
 
-  aa_substitution_clade_sizes = list()
-
-  for (s in substitutions){
-    aa_substitution_nodes = tree_tibble_for_node_search %>%
-      filter(map_lgl(aa_mutations, ~s %in% .x)) %>%
-      pluck("node")
-
-    aa_substitution_clade_sizes[[s]] = tips_per_node[as.character(aa_substitution_nodes)]
+    aa_clade_sizes[mutations] = map(
+      aa_clade_sizes[mutations],
+      append,
+      tips_per_node_tree_tibble_for_node_search[[i]]
+    )
   }
 
-  nt_mutation_clade_sizes = list()
+  for (i in seq_along(tree_tibble_for_node_search$nt_mutations_syn)){
+    # if (i %%1000 == 0) message(i)
+    mutations = unlist(tree_tibble_for_node_search$nt_mutations_syn[[i]])
 
-  for (m in nt_mutations){
-    nt_mutation_nodes = tree_tibble_for_node_search %>%
-      filter(map_lgl(nt_mutations, ~m %in% .x)) %>%
-      pluck("node")
-
-    nt_mutation_clade_sizes[[m]] = tips_per_node[as.character(nt_mutation_nodes)]
+    syn_nt_clade_sizes[mutations] = map(
+      syn_nt_clade_sizes[mutations],
+      append,
+      tips_per_node_tree_tibble_for_node_search[[i]]
+    )
   }
+
+  all_syn_nt_clade_sizes = unlist(syn_nt_clade_sizes)
+  mean_log2_syn_clade_size = mean(log2(all_syn_nt_clade_sizes))
+  q0.8_log2_syn_clade_size = quantile(log2(all_syn_nt_clade_sizes), 0.8)
+
+  makeTibble = function(clade_sizes, ps){
+    tib = tibble(
+      mutation = names(clade_sizes),
+      clade_sizes = clade_sizes
+    ) %>%
+      mutate(
+        n_clades = map_int(clade_sizes, length),
+
+        mean_log2_clade_size = map_dbl(
+          clade_sizes,
+          ~mean(log2(.x))
+        ),
+        mean_log2_clade_size_diff = mean_log2_clade_size - mean_log2_syn_clade_size,
+
+        q0.8_log2_clade_size = map_dbl(
+          clade_sizes,
+          ~quantile(log2(.x), 0.8)
+        ),
+        q0.8_log2_clade_size_diff = q0.8_log2_clade_size - q0.8_log2_syn_clade_size
+      )
+
+
+    if (ps){
+
+      quantile_f = function(x) {quantile(x, 0.8)}
+      mean_f = function(x) {mean(x)}
+      n_resamples = 1e3
+
+      bootPop = function(sample_size, null_pop, n_boots, summary_fun){
+        sample(
+          x = null_pop,
+          size = sample_size*n_boots,
+          replace = T
+        ) %>%
+          matrix(
+            nrow = sample_size,
+            ncol = n_boots
+          ) %>%
+          apply(2, summary_fun)
+      }
+
+      efficient_map = function(v, f, verbose = T, ...){
+        v_unq = unique(v)
+        if (verbose) message('length = ', length(v_unq))
+        args = list(...)
+        o = list()
+        for (i in seq_along(v_unq)){
+          o[[i]] = f(v_unq[[i]], ...)
+        }
+        o[match(v, v_unq)]
+      }
+
+
+      tib = tib %>%
+        mutate(
+          q0.8_log2_clade_size_diff_p = efficient_map(
+            n_clades,
+            bootPop,
+            verbose = T,
+            null_pop = log2(all_syn_nt_clade_sizes),
+            n_boots = n_resamples,
+            summary_fun = quantile_f
+          ) %>%
+            map2_dbl(
+              q0.8_log2_clade_size,
+              ~mean(.x>=.y)
+            ),
+
+          mean_log2_clade_size_diff_p = efficient_map(
+            n_clades,
+            bootPop,
+            verbose = T,
+            null_pop = log2(all_syn_nt_clade_sizes),
+            n_boots = n_resamples,
+            summary_fun = mean_f
+          ) %>%
+            map2_dbl(
+              mean_log2_clade_size,
+              ~mean(.x>=.y)
+            )
+        )
+    }
+    tib
+  }
+
+
+  list(
+    aas = makeTibble(aa_clade_sizes, ps = ps),
+    syn_nucs = makeTibble(syn_nt_clade_sizes, ps = ps)
+  )
+}
+
+
+#' Distribution of clade sizes compared to synonymous expectation
+#'
+#' @param tree_and_sequences ...
+#' @param tree_tibble_for_node_search Perhaps you want to restrict node search to a subset of the tree in tree_and_sequences. Because tree_and_sequences$tree is used to count descendant tips, the "intact" tree_and_sequences (i.e. without tree_and_sequences being subsetted, meaning `tree` corresponds exactly to `tree_tibble`) must also be passed
+#' @param aa_substitutions ...
+#' @param syn_nuc_mutations ...
+#' @param n_bootstraps ...
+#' @param max_log2_clade_size ...
+#' @param log2_clade_size_resolution ...
+#'
+#' @return ...
+#' @export
+getCladeSizeCDFs = function(
+    tree_and_sequences,
+    tree_tibble_for_node_search = tree_and_sequences$tree_tibble,
+    aa_substitutions,
+    syn_nuc_mutations,
+    n_bootstraps = 100,
+    max_log2_clade_size = 10,
+    log2_clade_size_resolution = 0.1
+){
+
+  all_clade_sizes = getAllCladeSizes(
+    tree_and_sequences,
+    tree_tibble_for_node_search
+  )
+
+  aa_substitution_clade_sizes = all_clade_sizes$aas %>%
+    {setNames(.$clade_sizes, .$mutation)}
+
+
+
+  syn_nuc_mutation_clade_sizes = all_clade_sizes$syn_nucs %>%
+    {setNames(.$clade_sizes, .$mutation)}
+
+  all_synonymous_clade_sizes = unlist(all_clade_sizes$syn_nucs$clade_sizes)
+
 
   focal_cdfs = tibble(
     mutation = character(),
@@ -121,13 +249,13 @@ getCladeSizeCDFs = function(
     )
   }
 
-  for (m in nt_mutations){
+  for (m in syn_nuc_mutations){
     focal_cdfs = add_row(
       focal_cdfs,
       mutation = m,
       aa_or_nt = "nt",
       cdf = getCDF(
-        log2(nt_mutation_clade_sizes[[m]]),
+        log2(syn_nuc_mutation_clade_sizes[[m]]),
         resolution = log2_clade_size_resolution,
         cdf_range = c(0, max_log2_clade_size)
       ),
@@ -151,13 +279,19 @@ getCladeSizeCDFs = function(
       bootstrap_replicate_id = i
     )
 
-    for (s in substitutions){
+    for (s in aa_substitutions){
       focal_cdfs = add_row(
         focal_cdfs,
         mutation = s,
         aa_or_nt = "aa",
         cdf = getCDF(
-          log2(sample(aa_substitution_clade_sizes[[s]], replace = T)),
+          log2(
+            sample(
+              all_synonymous_clade_sizes,
+              size = length(aa_substitution_clade_sizes[[s]]),
+              replace = T
+            )
+          ),
           resolution = log2_clade_size_resolution,
           cdf_range = c(0, max_log2_clade_size)
         ),
@@ -166,13 +300,19 @@ getCladeSizeCDFs = function(
       )
     }
 
-    for (m in nt_mutations){
+    for (m in syn_nuc_mutations){
       focal_cdfs = add_row(
         focal_cdfs,
         mutation = m,
         aa_or_nt = "nt",
         cdf = getCDF(
-          log2(sample(nt_mutation_clade_sizes[[m]], replace = T)),
+          log2(
+            sample(
+              all_synonymous_clade_sizes,
+              size = length(syn_nuc_mutation_clade_sizes[[m]]),
+              replace = T
+            )
+          ),
           resolution = log2_clade_size_resolution
         ),
         real_or_bootstrap = "bootstrap",

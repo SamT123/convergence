@@ -4,14 +4,22 @@
 \alias{getTreeSizeAndNucRates}
 \title{Get information about a tree required for calculating convergence scores}
 \usage{
-getTreeSizeAndNucRates(tree_and_sequences)
+getTreeSizeAndNucRates(
+  tree_and_sequences,
+  noise_model,
+  n_iter = 2000,
+  n_chains = 3,
+  excluded_positions = c(),
+  use_fitted_rates = T,
+  seed = NULL
+)
 }
 \arguments{
 \item{tree_and_sequences}{a list containing `tree` and `tree_tibble`
 
 tree_size_ratios are the
-overall_tree_size = overall_tree_size,
-overall_nuc_rates = overall_nuc_rates,
+tree_size = tree_size,
+nuc_rates = nuc_rates,
 fast_tree_size_fn = tree_size_fn}
 }
 \description{

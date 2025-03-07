@@ -3,20 +3,79 @@
 #' @param tree_and_sequences a list containing `tree` and `tree_tibble`
 #'
 #' tree_size_ratios are the
-#' overall_tree_size = overall_tree_size,
-#' overall_nuc_rates = overall_nuc_rates,
+#' tree_size = tree_size,
+#' nuc_rates = nuc_rates,
 #' fast_tree_size_fn = tree_size_fn
 #'
 #'@export
-getTreeSizeAndNucRates = function(tree_and_sequences){
+getTreeSizeAndNucRates = function(
+    tree_and_sequences,
+    noise_model,
+    n_iter = 2000,
+    n_chains = 3,
+    excluded_positions = c(),
+    use_fitted_rates = T,
+    seed = NULL
+) {
 
-  overall_nuc_counts = getNucCounts(tree_and_sequences)
-  tree_size_ratios = getTreeSizeNucWeightings(overall_nuc_counts)
-  overall_tree_size = getTreeSize(
-    overall_nuc_counts,
+  nuc_counts = getNucCounts(tree_and_sequences, excluded_positions=excluded_positions)
+
+  nuc_counts_with_model = addMutationRateModel(
+    nuc_counts,
+    model = noise_model,
+    n_iter = n_iter,
+    n_chains = n_chains,
+    seed = seed
+  )
+  nuc_counts = nuc_counts_with_model[["nuc_counts"]]
+  model_fit = nuc_counts_with_model[["model_fit"]]
+
+  if (use_fitted_rates){
+    nuc_counts$mutations_per_site_original =
+      nuc_counts$mutations_per_site
+
+    nuc_counts$mutations_per_site = pmap_dbl(
+        list(
+          .x = nuc_counts$parameters,
+          .y = nuc_counts$mutations_per_site
+        ),
+        \(.x,.y, .z) {
+          noise_model$sampling_function(
+            1e6,
+            .x,
+            .y,
+            pois = F
+          ) %>% {log2(.)} %>% mean() %>% {2**.}
+        }
+      )
+
+    model_fit$model_samples$bias = NULL
+    model_fit$model_samples$log_mean = model_fit$model_samples$log_mean -
+      matrix(
+        map_dbl(nuc_counts$parameters, "centrality")[
+          match(model_fit$mutation_order, nuc_counts$from_to)],
+        nrow = nrow(model_fit$model_samples$log_mean),
+        ncol = ncol(model_fit$model_samples$log_mean),
+        byrow = T
+      )
+
+    nuc_counts$parameters = map(
+      nuc_counts$parameters,
+      \(p) {
+        p$centrality = 0
+        p
+      }
+    )
+    # model_fit$samples$std says the same
+
+  }
+
+  tree_size_ratios = getTreeSizeNucWeightings(nuc_counts)
+  tree_size = getTreeSize(
+    nuc_counts,
     tree_size_ratios
   )
-  overall_nuc_rates = getNucRates(overall_nuc_counts, overall_tree_size)
+  nuc_counts = getNucRates(nuc_counts, tree_size)
 
   tree_size_fn = function(
     nuc_counts,
@@ -37,15 +96,18 @@ getTreeSizeAndNucRates = function(tree_and_sequences){
   rm(list = c("tree_and_sequences"))
   list(
     tree_size_ratios = tree_size_ratios,
-    overall_tree_size = overall_tree_size,
-    overall_nuc_rates = overall_nuc_rates,
-    fast_tree_size_fn = tree_size_fn
+    tree_size = tree_size,
+    nuc_rates = nuc_counts,
+    tree_size_fn = tree_size_fn,
+    noise_model_fit = model_fit,
+    sampling_function = noise_model$sampling_function
   )
 }
 
 getNucCounts = function(
     t_and_s,
-    four_fold_syn_nuc_positions = NULL
+    four_fold_syn_nuc_positions = NULL,
+    excluded_positions = c()
 ) {
 
   rates = tibble(
@@ -86,7 +148,10 @@ getNucCounts = function(
   for (fr in names(four_fold_syn_nuc_positions)){
 
     rates_nt = fixations %>%
-      filter(at %in% four_fold_syn_nuc_positions[[fr]]) %>%
+      filter(
+        at %in% four_fold_syn_nuc_positions[[fr]],
+        !at %in% excluded_positions
+      ) %>%
       mutate(at = factor(at, levels = four_fold_syn_nuc_positions[[fr]])) %>%
       group_by(to, .drop = F) %>%
       filter(as.character(to) != fr) %>%
@@ -121,6 +186,56 @@ getNucCounts = function(
 
   rates
 }
+
+
+addMutationRateModel = function(
+    nuc_counts,
+    model_with_param_extraction_function,
+    extract_parameters_function,
+    n_chains,
+    n_iter,
+    seed = NULL
+) {
+  nuc_counts_long = nuc_counts %>%
+    mutate(
+      n = n_mutations_individual_positions,
+      mutation = pmap(
+        list(from, to, n),
+        \(f,t,x) paste0(f, names(x), t)
+      ),
+      mutation_class = paste0(from, to),
+      expected_n = mutations_per_site
+    ) %>%
+    unnest(c(mutation, n)) %>%
+    select(
+      from,
+      to,
+      from_to,
+      mutation_class,
+      mutation,
+      expected_n,
+      n
+    )
+
+  model_fit = fitNoiseModel(
+    nuc_counts_long,
+    model_with_param_extraction_function$specification,
+    n_chains = n_chains,
+    n_iter = n_iter,
+    seed = seed
+  )
+
+  nuc_counts$parameters =
+    model_with_param_extraction_function$extract_parameters_function(
+      model_fit
+      )[nuc_counts$from_to]
+
+  list(
+    nuc_counts = nuc_counts,
+    model_fit = model_fit
+  )
+}
+
 
 getFourFoldSynPositions = function(t_and_s, threshold){
 
@@ -192,8 +307,8 @@ getSplitFourFoldSynPositionsFromTreeAndSequences = function(
 }
 
 
-getTreeSizeNucWeightings = function(overall_nuc_counts){
-  overall_nuc_counts %>%
+getTreeSizeNucWeightings = function(nuc_counts){
+  nuc_counts %>%
     transmute(
       from = from,
       to = to,

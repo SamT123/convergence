@@ -21,27 +21,34 @@ getTimeIntervalSubstitutionRatios = function(
 
     tree_tibble_filtered = filter(
       tree_and_sequences$tree_tibble,
-      estimated_date_nearest >= as_date(time_boundaries[[i]]),
-      estimated_date_nearest < as_date(time_boundaries[[i+1]])
+      as_date(
+        estimated_date_nearest,
+        format = c("%Y-%m-%d", "%Y-%m", "%Y")
+      ) >= as_date(time_boundaries[[i]]),
+      as_date(
+        estimated_date_nearest,
+        format = c("%Y-%m-%d", "%Y-%m", "%Y")
+      ) < as_date(time_boundaries[[i+1]])
     )
 
-    if (nrow(tree_tibble_filtered) == 0) break
+    if (nrow(tree_tibble_filtered) == 0) next
 
     ratios = getSubstitutionRatios(
       list(
         tree_tibble = tree_tibble_filtered
       ),
-      tree_info$overall_nuc_rates,
+      tree_info$nuc_rates,
       tree_info$tree_size_ratios,
-      tree_info$fast_tree_size_fn,
-      positions
+      tree_info$tree_size_fn,
+      tree_info$sampling_function,
+      positions = positions
     )
 
 
     time_interval_name = paste0(
-      time_boundaries[[i]],
+      as.character(time_boundaries[[i]]),
       " to ",
-      ifelse(i == length(time_boundaries)-1, "Inf", time_boundaries[[i+1]])
+      ifelse(i == length(time_boundaries)-1, "Inf", as.character(time_boundaries[[i+1]]))
     )
 
     ratio_list[[time_interval_name]] = ratios
@@ -129,4 +136,11 @@ getInfoAboutNodes = function(
   )
 
   recent_occurrence_descs_info
+}
+
+#' @export
+getConsensus = function(sequences){
+  Biostrings::consensusMatrix(sequences) %>%
+    {apply(., 2, \(x){rownames(.)[which.max(x)]})} %>%
+    paste(collapse = "")
 }
