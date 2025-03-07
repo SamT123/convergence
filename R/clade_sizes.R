@@ -49,7 +49,7 @@ getAllCladeSizes = function(
   ]
 
   for (i in seq_along(tree_tibble_for_node_search$aa_mutations_nonsyn)){
-    # if (i %%1000 == 0) message(i)
+
     mutations = unlist(tree_tibble_for_node_search$aa_mutations_nonsyn[[i]])
 
     aa_clade_sizes[mutations] = map(
@@ -60,7 +60,7 @@ getAllCladeSizes = function(
   }
 
   for (i in seq_along(tree_tibble_for_node_search$nt_mutations_syn)){
-    # if (i %%1000 == 0) message(i)
+
     mutations = unlist(tree_tibble_for_node_search$nt_mutations_syn[[i]])
 
     syn_nt_clade_sizes[mutations] = map(

@@ -9,9 +9,6 @@
 #'@export
 addASRusher = function(tree_and_sequences, aa_ref, nuc_ref){
 
-  # original_tree_and_sequences = tree_and_sequences
-
-  message("Do ASR")
   tree_and_sequences = remakeTreeAndSequencesWithUsherASR(
     tree_and_sequences,
     aa_ref = aa_ref,
@@ -26,17 +23,6 @@ addASRusher = function(tree_and_sequences, aa_ref, nuc_ref){
   tree_and_sequences$tree = tree_and_sequences_ladderized$tree
   tree_and_sequences$tree_tibble = tree_and_sequences_ladderized$tib
 
-
-  # tree_and_sequences$tree_with_USHER_branch_lengths = tree_and_sequences$tree
-  # tree_and_sequences$tree_tibble_with_USHER_branch_lengths = tree_and_sequences$tree_tibble
-
-  # tree_and_sequences = stealEdgeLengths(
-  #   tree_and_sequences,
-  #   original_tree_and_sequences
-  # )
-
-
-  message("Add aa")
   tree_and_sequences = addAaSequence(tree_and_sequences, aa_ref)
   tree_and_sequences = addSynonymousInfo(tree_and_sequences)
 

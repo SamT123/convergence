@@ -7,15 +7,14 @@ getSubstitutionRatios = function(
     sampling_function,
     positions
 ){
-  message("\tCodon table")
+
   codon_table = getCodonTable(
     t_and_s_filtered$tree_tibble,
     positions
   )
 
   codon_table_filtered = filter(codon_table, at %in% positions)
-  # codon_table_filtered = filter(codon_table, at == 156)
-  message("\tExpected counts")
+
   codon_table_with_expected_n = addExpectedMutationsToCodonTable(
     t_and_s_filtered$tree_tibble,
     codon_table_filtered,
@@ -24,7 +23,6 @@ getSubstitutionRatios = function(
     tree_size_fn
   )
 
-  message("\tRatios")
   mutation_table = addObservedMutationCounts(
     codon_table_with_expected_n,
     t_and_s_filtered$tree_tibble
