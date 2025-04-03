@@ -35,7 +35,7 @@ getAllCladeSizes = function(
     setNames(unique(unlist(tree_tibble_for_node_search$nt_mutations_syn)))
 
   tree_and_sequences$tree_tibble$tips_per_node = c(
-    rep(1, Ntip(tree_and_sequences$tree)),
+    rep(1, ape::Ntip(tree_and_sequences$tree)),
     castor::count_tips_per_node(tree_and_sequences$tree)
   )
 

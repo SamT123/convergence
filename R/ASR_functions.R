@@ -61,11 +61,11 @@ addSynonymousInfo = function(tree_and_sequences){
 
 addAaSequence = function(tree_and_sequences, aa_ref){
   tree_and_sequences$tree_tibble$aa_sequence = NA
-  tree_and_sequences$tree_tibble$aa_sequence[1:Ntip(tree_and_sequences$tree)] =
+  tree_and_sequences$tree_tibble$aa_sequence[1:ape::Ntip(tree_and_sequences$tree)] =
     suppressWarnings(
       seqUtils::translate(
         tree_and_sequences$tree_tibble$dna_sequence[
-          1:Ntip(tree_and_sequences$tree)],
+          1:ape::Ntip(tree_and_sequences$tree)],
         reference_aas = substr(
           aa_ref,
           1,
@@ -182,14 +182,14 @@ ladderizeTreeAndTib = function(tree, tib){
   node_labels_present = !is.null(tree$node.labels)
   if (node_labels_present){recover_node_labels = setNames(
     tree$node.label,
-    paste0("n", seq_len(Nnode(tree)))
+    paste0("n", seq_len(ape::Nnode(tree)))
   )}
 
   tree$tip.label = paste0(
     "t", seq_along(tree$tip.label)
   )
 
-  tree$node.label = paste0("n", seq_len(Nnode(tree)))
+  tree$node.label = paste0("n", seq_len(ape::Nnode(tree)))
 
   tib$nms = c(
     tree$tip.label,
@@ -241,14 +241,14 @@ getParentsFromNodelist = function(parents, node){
 
 getDescendants = function(phy, node){
 
-  if (node <= Ntip(phy)) return(NULL)
+  if (node <= ape::Ntip(phy)) return(NULL)
 
   st = castor::get_subtree_at_node(
     phy,
-    node = node - Ntip(phy)
+    node = node - ape::Ntip(phy)
   )
 
-  o = c(st$new2old_tip, st$new2old_node + Ntip(phy))
+  o = c(st$new2old_tip, st$new2old_node + ape::Ntip(phy))
   o[o!= node]
 }
 
@@ -389,6 +389,8 @@ remakeTreeAndSequencesWithUsherASR = function(tree_and_sequences, aa_ref, nuc_re
   parent_row = which(tree_and_sequences$tree_tibble$parent ==
                        tree_and_sequences$tree_tibble$node)
 
+  tree_and_sequences$tree_tibble$nt_mutations[parent_row] = list(NULL)
+  tree_and_sequences$tree_tibble$nt_positions[parent_row] = list(NULL)
   tree_and_sequences$tree_tibble$aa_mutations[parent_row] = list(NULL)
   tree_and_sequences$tree_tibble$codon_changes[parent_row] = list(NULL)
 

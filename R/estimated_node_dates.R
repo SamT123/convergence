@@ -27,10 +27,10 @@ addEstimatedNodeDates = function(tree_and_sequences){
   tree_and_sequences$tree$tip.label = name_to_hash[
     tree_and_sequences$tree$tip.label]
 
-  tree_and_sequences$tree$node.label = 1:Nnode(tree_and_sequences$tree)
+  tree_and_sequences$tree$node.label = 1:ape::Nnode(tree_and_sequences$tree)
   tree_and_sequences$tree_tibble$label[
-    Ntip(tree_and_sequences$tree) + (1:Nnode(tree_and_sequences$tree)) ] =
-    1:Nnode(tree_and_sequences$tree)
+    ape::Ntip(tree_and_sequences$tree) + (1:ape::Nnode(tree_and_sequences$tree)) ] =
+    1:ape::Nnode(tree_and_sequences$tree)
 
 
   tree_and_sequences$tree_tibble$Collection_date_clean = tree_and_sequences$tree_tibble$Collection_date

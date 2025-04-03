@@ -9,10 +9,27 @@ Description: More about what it does (maybe more than one line)
 License: What license is it under?
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.3.1
+RoxygenNote: 7.3.2
 Depends:
     tidyverse
 Imports: 
-    purrr
+    ape,
+    assertthat,
+    bayestestR,
+    Biostrings,
+    castor,
+    convergence,
+    dplyr,
+    fs,
+    ggdist,
+    magrittr,
+    openssl,
+    processx,
+    purrr,
+    readr,
+    rstan,
+    seqUtils,
+    tools,
+    treeio
 URL: https://github.com/SamT123/convergence
 BugReports: https://github.com/SamT123/convergence/issues
