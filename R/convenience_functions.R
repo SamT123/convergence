@@ -38,7 +38,6 @@ getTimeIntervalSubstitutionRatios = function(
         tree_tibble = tree_tibble_filtered
       ),
       tree_info$nuc_rates,
-      tree_info$tree_size_ratios,
       tree_info$tree_size_fn,
       tree_info$sampling_function,
       positions = positions

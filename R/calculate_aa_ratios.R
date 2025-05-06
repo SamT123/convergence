@@ -2,7 +2,6 @@
 getSubstitutionRatios = function(
     t_and_s_filtered,
     nuc_rates,
-    tree_size_ratios,
     tree_size_fn,
     sampling_function,
     positions
@@ -19,7 +18,6 @@ getSubstitutionRatios = function(
     t_and_s_filtered$tree_tibble,
     codon_table_filtered,
     nuc_rates,
-    tree_size_ratios,
     tree_size_fn
   )
 
@@ -40,7 +38,7 @@ getSubstitutionRatios = function(
 }
 
 
-# gets all codons with frequency >1% at each amino acid position
+# gets all codons at each amino acid position
 getCodonTable = function(tree_tibble, positions, min_prop = 0, min_count = 1){
   codons = map(
     positions,
@@ -53,7 +51,7 @@ getCodonTable = function(tree_tibble, positions, min_prop = 0, min_count = 1){
       counts = sort(table(codons))
       counts = counts[!str_detect(names(counts), "N")]
       props = counts / sum(counts)
-      props = props[props >= min_prop & counts >= min_count] # remove this?
+      props = props[props >= min_prop & counts >= min_count]
       whiches = map(names(props), ~tree_tibble$node[which(codons == .x)])
 
       list(
@@ -110,7 +108,6 @@ addExpectedMutationsToCodonTable = function(
     tree_tibble,
     codon_table,
     nuc_rates,
-    tree_size_ratios,
     tree_size_fn
 ){
 
@@ -135,7 +132,7 @@ addExpectedMutationsToCodonTable = function(
     rep(list(NULL), nrow(codon_table))
 
   for (idx in seq_len(nrow(codon_table))){
-    # get sites which are four fold syn at the tips with the codon being considered
+    # get sites which are four fold syn at the nodes where the codon being considered is present
     four_fold_syn_sites_idx = splitFourFoldSynPositionsFromSequenceTable(
       sequences_at_four_fold_syn_sites,
       unique(
@@ -146,7 +143,7 @@ addExpectedMutationsToCodonTable = function(
       )
     )
 
-    # get tree size estimate + sample for the codon being considered, and interpolate mutation nuc rates for the codon
+    # get tree size estimate + sample for the codon being considered, and interpolate nuc rates for the codon
     nuc_counts_idx = getNucCounts(
       list(
         tree_tibble = filter(
@@ -157,21 +154,17 @@ addExpectedMutationsToCodonTable = function(
       four_fold_syn_nuc_positions = four_fold_syn_sites_idx
     )
 
-    tree_size_idx = tree_size_fn(
-      nuc_counts = nuc_counts_idx,
-      tree_size_ratios = tree_size_ratios
-    )
+    tree_size_idx = tree_size_fn(nuc_counts = nuc_counts_idx)
 
-    thiscodon_nuc_rates = interpolateMutationRates(
-      nuc_counts_idx,
-      tree_size_idx,
-      nuc_rates
-    )
+    thiscodon_nuc_rates = nuc_rates
+
+    thiscodon_nuc_rates$mutations_per_site =
+      thiscodon_nuc_rates$mutations_per_site_rate * tree_size_idx
 
     codon_table$tree_size[[idx]] = tree_size_idx
 
     codon_table$mutations_per_site_interp[[idx]] = setNames(
-      thiscodon_nuc_rates$mutations_per_site_interp,
+      thiscodon_nuc_rates$mutations_per_site,
       thiscodon_nuc_rates$from_to)
 
   }
@@ -355,35 +348,4 @@ summariseMutationTableToAAsAndSyns  = function(mutation_table){
     )
 
   list(aas = aa_mutation_table, syn_nucs = syn_nt_mutations)
-}
-
-interpolateMutationRates = function(
-    nuc_rates_by_cluster,
-    cluster_tree_size,
-    nuc_rates_overall
-) {
-
-  nuc_rates_by_cluster$mutations_per_site_interp = rep(
-    NA,
-    nrow(nuc_rates_by_cluster)
-  )
-
-  for (from in c("A", "T", "C", "G")){
-    for (to in c("A", "T", "C", "G")){
-      if (from == to) next
-      row = which(
-        nuc_rates_by_cluster$from == from & nuc_rates_by_cluster$to == to
-      )
-
-      nuc_rates_by_cluster$mutations_per_site_interp[[row]] =
-        cluster_tree_size *
-        nuc_rates_overall$mutations_per_site_rate[[
-          which(nuc_rates_overall$from == from &
-                  nuc_rates_overall$to == to)]]
-
-    }
-  }
-
-
-  nuc_rates_by_cluster
 }
