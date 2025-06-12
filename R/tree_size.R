@@ -1,11 +1,12 @@
 #' Get information about a tree required for calculating convergence scores
 #'
 #' @param tree_and_sequences a list containing `tree` and `tree_tibble`
-#'
-#' tree_size_ratios are the
-#' tree_size = tree_size,
-#' nuc_rates = nuc_rates,
-#' fast_tree_size_fn = tree_size_fn
+#' @param noise_model one of the 'noise_models'
+#' @param n_iter iterations for rstan
+#' @param n_chains chains for rstan
+#' @param excluded_positions positions to exclude for synonymous rate variation calculation
+#' @param use_fitted_rates should the fitted mutation rates be used, rather than simply taking the mean of the observed values?
+#' @param seed seed for rstan
 #'
 #'@export
 getTreeSizeAndNucRates = function(
@@ -35,7 +36,7 @@ getTreeSizeAndNucRates = function(
 
   if (use_fitted_rates){
 
-    nuc_counts$mutations_per_site = pmap_dbl(
+    nuc_counts$mutations_per_site = purrr::pmap_dbl(
         list(
           .x = nuc_counts$parameters,
           .y = nuc_counts$mutations_per_site_measured
@@ -45,7 +46,7 @@ getTreeSizeAndNucRates = function(
         }
       )
 
-    nuc_counts$parameters = map(
+    nuc_counts$parameters = purrr::map(
       nuc_counts$parameters,
       \(p) {
         p$centrality = 0
@@ -103,12 +104,12 @@ getNucCounts = function(
 
   fixations = t_and_s$tree_tibble %>%
     select(nt_mutations_syn) %>%
-    unnest(nt_mutations_syn) %>%
+    tidyr::unnest(nt_mutations_syn) %>%
     mutate(
-      from = str_sub(nt_mutations_syn, 1, 1),
-      at = str_sub(nt_mutations_syn, 2, -2) %>% as.integer(),
+      from = stringr::str_sub(nt_mutations_syn, 1, 1),
+      at = stringr::str_sub(nt_mutations_syn, 2, -2) %>% as.integer(),
       to = factor(
-        str_sub(nt_mutations_syn, -1, -1),
+        stringr::str_sub(nt_mutations_syn, -1, -1),
         levels = c("A", "T", "C", "G")
       )
     )
@@ -169,8 +170,7 @@ getNucCounts = function(
 
 addMutationRateModel = function(
     nuc_counts,
-    model_with_param_extraction_function,
-    extract_parameters_function,
+    model,
     n_chains,
     n_iter,
     seed = NULL
@@ -178,14 +178,14 @@ addMutationRateModel = function(
   nuc_counts_long = nuc_counts %>%
     mutate(
       n = n_mutations_individual_positions,
-      mutation = pmap(
+      mutation = purrr::pmap(
         list(from, to, n),
         \(f,t,x) paste0(f, names(x), t)
       ),
       mutation_class = paste0(from, to),
       expected_n = mutations_per_site_measured
     ) %>%
-    unnest(c(mutation, n)) %>%
+    tidyr::unnest(c(mutation, n)) %>%
     select(
       from,
       to,
@@ -198,14 +198,14 @@ addMutationRateModel = function(
 
   model_fit = fitNoiseModel(
     nuc_counts_long,
-    model_with_param_extraction_function$specification,
+    model$specification,
     n_chains = n_chains,
     n_iter = n_iter,
     seed = seed
   )
 
   nuc_counts$parameters =
-    model_with_param_extraction_function$extract_parameters_function(
+    model$extract_parameters_function(
       model_fit
       )[nuc_counts$from_to]
 
@@ -218,21 +218,21 @@ addMutationRateModel = function(
 
 getFourFoldSynPositions = function(t_and_s, threshold){
 
-  four_fold_syn_codons = names(Biostrings::GENETIC_CODE)[map_lgl(
+  four_fold_syn_codons = names(Biostrings::GENETIC_CODE)[purrr::map_lgl(
     names(Biostrings::GENETIC_CODE),
     function(cod){
       length(unique(Biostrings::GENETIC_CODE[
-        paste0(str_sub(cod, 1, 2), c("A", "T", "C", "G"))])) == 1
+        paste0(stringr::str_sub(cod, 1, 2), c("A", "T", "C", "G"))])) == 1
     }
   )] %>%
     unique()
 
-  t_and_s$tree_tibble$codons = map(
+  t_and_s$tree_tibble$codons = purrr::map(
     t_and_s$tree_tibble$reconstructed_dna_sequence,
     ~substring(.x, seq(1, nchar(.x), 3), seq(3, nchar(.x), 3))
   )
 
-  t_and_s$tree_tibble$four_fold_syn_codons = map(
+  t_and_s$tree_tibble$four_fold_syn_codons = purrr::map(
     t_and_s$tree_tibble$codons,
     ~which(.x %in% four_fold_syn_codons)
   )
@@ -259,7 +259,7 @@ getSplitFourFoldSynPositionsFromTreeAndSequences = function(
     proportion_syn_threshold
   ) * 3
 
-  four_fold_syn_nuc_position_aas = map(
+  four_fold_syn_nuc_position_aas = purrr::map(
     four_fold_syn_nuc_positions,
     function(pos){
       nts = substr(
@@ -277,9 +277,9 @@ getSplitFourFoldSynPositionsFromTreeAndSequences = function(
 
   four_fold_syn_nuc_positions = split(
     four_fold_syn_nuc_positions[
-      map_dbl(four_fold_syn_nuc_position_aas, "prop") > identity_threshold],
-    map_chr(four_fold_syn_nuc_position_aas, "nt")[
-      map_dbl(four_fold_syn_nuc_position_aas, "prop") > identity_threshold]
+      purrr::map_dbl(four_fold_syn_nuc_position_aas, "prop") > identity_threshold],
+    purrr::map_chr(four_fold_syn_nuc_position_aas, "nt")[
+      purrr::map_dbl(four_fold_syn_nuc_position_aas, "prop") > identity_threshold]
   )
 
   four_fold_syn_nuc_positions

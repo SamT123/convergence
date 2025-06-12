@@ -7,13 +7,15 @@
 addEstimatedNodeDates(tree_and_sequences)
 }
 \arguments{
-\item{tree_and_sequences}{a list containing `tree` and `tree_tibble`
+\item{tree_and_sequences}{a list containing \code{tree} and \code{tree_tibble}
 
-Two types of node date are added: the collection date of the nearest tip, and the collection date of the nearest _descendant_ tip.
+Two types of node date are added: the collection date of the nearest tip, and the collection date of the nearest \emph{descendant} tip.
 
 To do:
-- Node dating with TimeTree and/or Chronumental
-- Earliest date of any descendant tip (but this is very sensitive to misplaced sequences)}
+\itemize{
+\item Node dating with TimeTree and/or Chronumental
+\item Earliest date of any descendant tip (but this is very sensitive to misplaced sequences)
+}}
 }
 \description{
 Add estiamted node dates to tree_tibble

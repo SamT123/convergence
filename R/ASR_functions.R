@@ -32,25 +32,25 @@ addASRusher = function(tree_and_sequences, aa_ref, nuc_ref){
 addSynonymousInfo = function(tree_and_sequences){
 
 
-  tree_and_sequences$tree_tibble$aa_mutations_syn = map2(
+  tree_and_sequences$tree_tibble$aa_mutations_syn = purrr::map2(
     tree_and_sequences$tree_tibble$aa_mutations,
     tree_and_sequences$tree_tibble$nt_mutations_is_syn,
     ~.x[.y]
   )
 
-  tree_and_sequences$tree_tibble$aa_mutations_nonsyn = map2(
+  tree_and_sequences$tree_tibble$aa_mutations_nonsyn = purrr::map2(
     tree_and_sequences$tree_tibble$aa_mutations,
     tree_and_sequences$tree_tibble$nt_mutations_is_syn,
     ~.x[!.y]
   )
 
-  tree_and_sequences$tree_tibble$nt_mutations_syn = map2(
+  tree_and_sequences$tree_tibble$nt_mutations_syn = purrr::map2(
     tree_and_sequences$tree_tibble$nt_mutations,
     tree_and_sequences$tree_tibble$nt_mutations_is_syn,
     ~.x[.y]
   )
 
-  tree_and_sequences$tree_tibble$nt_mutations_nonsyn = map2(
+  tree_and_sequences$tree_tibble$nt_mutations_nonsyn = purrr::map2(
     tree_and_sequences$tree_tibble$nt_mutations,
     tree_and_sequences$tree_tibble$nt_mutations_is_syn,
     ~.x[!.y]
@@ -200,7 +200,7 @@ ladderizeTreeAndTib = function(tree, tib){
 
   tib = tib[match(c(tree$tip.label, tree$node.label), tib$nms),]
 
-  old2new = setNames(tib$node, str_sub(tib$nms, 2))
+  old2new = setNames(tib$node, stringr::str_sub(tib$nms, 2))
   tib$node = old2new[tib$node]
   tib$parent = old2new[tib$parent]
   tree$tip.label = recover_tip_labels[tree$tip.label]
@@ -217,9 +217,9 @@ ladderizeTreeAndTib = function(tree, tib){
 applySubstitutions = function(seq, subs, backwards = F){
 
   for (s in subs){
-    at = as.integer(str_sub(s, 2, -2))
-    if (!backwards) substr(seq, at, at) = str_sub(s, -1, -1)
-    if (backwards) substr(seq, at, at) = str_sub(s, 1, 1)
+    at = as.integer(stringr::str_sub(s, 2, -2))
+    if (!backwards) substr(seq, at, at) = stringr::str_sub(s, -1, -1)
+    if (backwards) substr(seq, at, at) = stringr::str_sub(s, 1, 1)
   }
 
   seq
@@ -239,7 +239,7 @@ getParentsFromNodelist = function(parents, node){
   node
 }
 
-getDescendants = function(phy, node){
+fastGetDescendants = function(phy, node){
 
   if (node <= ape::Ntip(phy)) return(NULL)
 
@@ -263,7 +263,7 @@ reconstructNodeSequences = function(tree_tibble){
     filter(
       tree_tibble,
       !node %in% parent,
-      str_count(dna_sequence, "N") == min(str_count(dna_sequence, "N"), na.rm = T)
+      stringr::str_count(dna_sequence, "N") == min(stringr::str_count(dna_sequence, "N"), na.rm = T)
     )$node,
     1
   )
@@ -303,7 +303,7 @@ reconstructNodeSequences = function(tree_tibble){
   }
 
   tree_tibble$reconstructed_dna_sequence = reconstructed_dna_sequences
-  # tree_tibble$reconstructed_codons = map(
+  # tree_tibble$reconstructed_codons = purrr::map(
   #   tree_tibble$reconstructed_dna_sequence,
   #   ~substring(.x, seq(1, nchar(.x), 3), seq(3, nchar(.x), 3))
   # )
@@ -340,12 +340,12 @@ remakeTreeAndSequencesWithUsherASR = function(tree_and_sequences, aa_ref, nuc_re
 
   tree_and_sequences$tree_tibble$nt_mutations =
     tree_and_sequences$tree_tibble$nt_mutations %>%
-    str_split(";|,") %>%
-    map(~.x[!is.na(.x)])
+    stringr::str_split(";|,") %>%
+    purrr::map(~.x[!is.na(.x)])
 
-  tree_and_sequences$tree_tibble$nt_positions = map(
+  tree_and_sequences$tree_tibble$nt_positions = purrr::map(
     tree_and_sequences$tree_tibble$nt_mutations,
-    ~as.integer(str_sub(.x, 2, -2))
+    ~as.integer(stringr::str_sub(.x, 2, -2))
   )
 
 
@@ -353,7 +353,7 @@ remakeTreeAndSequencesWithUsherASR = function(tree_and_sequences, aa_ref, nuc_re
     tree_and_sequences$tree_tibble
   )
 
-  tree_and_sequences$tree_tibble$codon_changes = pmap(
+  tree_and_sequences$tree_tibble$codon_changes = purrr::pmap(
     list(
       positions = tree_and_sequences$tree_tibble$nt_positions,
       seq = tree_and_sequences$tree_tibble$reconstructed_dna_sequence,
@@ -363,13 +363,13 @@ remakeTreeAndSequencesWithUsherASR = function(tree_and_sequences, aa_ref, nuc_re
       if (length(positions) == 0) return(character())
       aa_positions = ceiling(positions / 3)
       paste0(
-        str_sub(parental_seq, 3*(aa_positions-1)+1, 3*aa_positions),
+        stringr::str_sub(parental_seq, 3*(aa_positions-1)+1, 3*aa_positions),
         ">",
-        str_sub(seq, 3*(aa_positions-1)+1, 3*aa_positions)
+        stringr::str_sub(seq, 3*(aa_positions-1)+1, 3*aa_positions)
       )
     }
   )
-  tree_and_sequences$tree_tibble$aa_mutations = map2(
+  tree_and_sequences$tree_tibble$aa_mutations = purrr::map2(
     tree_and_sequences$tree_tibble$codon_changes,
     tree_and_sequences$tree_tibble$nt_positions,
     function(codon, pos){
@@ -394,7 +394,7 @@ remakeTreeAndSequencesWithUsherASR = function(tree_and_sequences, aa_ref, nuc_re
   tree_and_sequences$tree_tibble$aa_mutations[parent_row] = list(NULL)
   tree_and_sequences$tree_tibble$codon_changes[parent_row] = list(NULL)
 
-  tree_and_sequences$tree_tibble$nt_mutations_is_single = map(
+  tree_and_sequences$tree_tibble$nt_mutations_is_single = purrr::map(
     tree_and_sequences$tree_tibble$nt_positions,
     function(positions){
       aa_positions = ceiling(positions/3)
@@ -402,11 +402,11 @@ remakeTreeAndSequencesWithUsherASR = function(tree_and_sequences, aa_ref, nuc_re
     }
   )
 
-  tree_and_sequences$tree_tibble$nt_mutations_is_syn = map(
+  tree_and_sequences$tree_tibble$nt_mutations_is_syn = purrr::map(
     tree_and_sequences$tree_tibble$codon_changes,
     function(codon_changes){
-      froms = str_sub(codon_changes, 1, 3)
-      tos = str_sub(codon_changes, -3, -1)
+      froms = stringr::str_sub(codon_changes, 1, 3)
+      tos = stringr::str_sub(codon_changes, -3, -1)
 
       froms = Biostrings::GENETIC_CODE[froms]
       froms[is.na(froms)] = "X"

@@ -52,7 +52,7 @@ getAllCladeSizes = function(
 
     mutations = unlist(tree_tibble_for_node_search$aa_mutations_nonsyn[[i]])
 
-    aa_clade_sizes[mutations] = map(
+    aa_clade_sizes[mutations] = purrr::map(
       aa_clade_sizes[mutations],
       append,
       tips_per_node_tree_tibble_for_node_search[[i]]
@@ -63,7 +63,7 @@ getAllCladeSizes = function(
 
     mutations = unlist(tree_tibble_for_node_search$nt_mutations_syn[[i]])
 
-    syn_nt_clade_sizes[mutations] = map(
+    syn_nt_clade_sizes[mutations] = purrr::map(
       syn_nt_clade_sizes[mutations],
       append,
       tips_per_node_tree_tibble_for_node_search[[i]]
@@ -80,15 +80,15 @@ getAllCladeSizes = function(
       clade_sizes = clade_sizes
     ) %>%
       mutate(
-        n_clades = map_int(clade_sizes, length),
+        n_clades = purrr::map_int(clade_sizes, length),
 
-        mean_log2_clade_size = map_dbl(
+        mean_log2_clade_size = purrr::map_dbl(
           clade_sizes,
           ~mean(log2(.x))
         ),
         mean_log2_clade_size_diff = mean_log2_clade_size - mean_log2_syn_clade_size,
 
-        q0.8_log2_clade_size = map_dbl(
+        q0.8_log2_clade_size = purrr::map_dbl(
           clade_sizes,
           ~quantile(log2(.x), 0.8)
         ),
@@ -137,7 +137,7 @@ getAllCladeSizes = function(
             n_boots = n_resamples,
             summary_fun = quantile_f
           ) %>%
-            map2_dbl(
+            purrr::map2_dbl(
               q0.8_log2_clade_size,
               ~mean(.x>=.y)
             ),
@@ -150,7 +150,7 @@ getAllCladeSizes = function(
             n_boots = n_resamples,
             summary_fun = mean_f
           ) %>%
-            map2_dbl(
+            purrr::map2_dbl(
               mean_log2_clade_size,
               ~mean(.x>=.y)
             )

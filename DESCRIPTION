@@ -1,27 +1,23 @@
 Package: convergence
-Type: Package
-Title: What the Package Does (Title Case)
-Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+Title: Convergence functions
+Version: 0.0.0.9000
+Authors@R: 
+    person("Sam", "Turner", , "sat65@canm.ac.uk", role = c("aut", "cre"))
+Description: Functions for calculating convergence ratios.
+License: MIT + file LICENSE
 Encoding: UTF-8
-LazyData: true
+Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
-Depends:
-    tidyverse
 Imports: 
     ape,
     assertthat,
     bayestestR,
     Biostrings,
     castor,
-    convergence,
     dplyr,
     fs,
     ggdist,
+    lubridate,
     magrittr,
     openssl,
     processx,
@@ -29,7 +25,7 @@ Imports:
     readr,
     rstan,
     seqUtils,
-    tools,
+    stats,
+    stringr,
+    tidyr,
     treeio
-URL: https://github.com/SamT123/convergence
-BugReports: https://github.com/SamT123/convergence/issues

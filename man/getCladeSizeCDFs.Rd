@@ -17,7 +17,7 @@ getCladeSizeCDFs(
 \arguments{
 \item{tree_and_sequences}{...}
 
-\item{tree_tibble_for_node_search}{Perhaps you want to restrict node search to a subset of the tree in tree_and_sequences. Because tree_and_sequences$tree is used to count descendant tips, the "intact" tree_and_sequences (i.e. without tree_and_sequences being subsetted, meaning `tree` corresponds exactly to `tree_tibble`) must also be passed}
+\item{tree_tibble_for_node_search}{Perhaps you want to restrict node search to a subset of the tree in tree_and_sequences. Because tree_and_sequences$tree is used to count descendant tips, the "intact" tree_and_sequences (i.e. without tree_and_sequences being subsetted, meaning \code{tree} corresponds exactly to \code{tree_tibble}) must also be passed}
 
 \item{aa_substitutions}{...}
 

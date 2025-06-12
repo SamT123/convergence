@@ -17,6 +17,9 @@ make_iq_tree(
 )
 }
 \arguments{
+\item{sequences}{DNA alignment to use for phylogenetic analysis. Must be matrix
+(i.e., aligned sequences) of class DNAbin}
+
 \item{wd}{Path to working directory. The alignment and IQ-TREE intermediate files
 and results will be written here.}
 
@@ -36,21 +39,10 @@ previous runs is present?}
 
 \item{...}{Other arguments not used by this function but used by
 drake for tracking.}
-
-\item{alignment}{DNA alignment to use for phylogenetic analysis. Must be matrix
-(i.e., aligned sequences) of class DNAbin}
 }
 \value{
 Phylogenetic tree (list of class "phylo")
 }
 \description{
 Wrapper for IQ-TREE
-}
-\examples{
-data(woodmouse)
-# Rapid boot-strap tree with 1000 replicates on best-fitting model
-tree <- iq_tree(woodmouse, tempdir(), bb = 1000, echo = TRUE)
-plot(tree)
-# Check the optimum number of cores to use for GTR+I+G model
-iq_tree(tempdir(), woodmouse, m = "GTR+I+G", nt = "AUTO", echo = TRUE, redo = TRUE)
 }

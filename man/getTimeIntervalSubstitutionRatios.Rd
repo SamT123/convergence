@@ -14,9 +14,9 @@ getTimeIntervalSubstitutionRatios(
 \arguments{
 \item{tree_and_sequences}{tree_and_sequences list}
 
-\item{tree_info}{tree_info from `getTreeSizeAndNucRates`}
+\item{tree_info}{tree_info from \code{getTreeSizeAndNucRates}}
 
-\item{time_boundaries}{Boundaries between time intervals. The final interval will have boundaries [last_time_interval, Inf]}
+\item{time_boundaries}{Boundaries between time intervals. The final interval will have boundaries (last_time_interval, Inf)}
 
 \item{positions}{amino acid positions to analyse}
 }

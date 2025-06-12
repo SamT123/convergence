@@ -3,7 +3,7 @@
 #'
 #' @param tree_and_sequences tree_and_sequences list
 #' @param tree_info tree_info from `getTreeSizeAndNucRates`
-#' @param time_boundaries Boundaries between time intervals. The final interval will have boundaries [last_time_interval, Inf]
+#' @param time_boundaries Boundaries between time intervals. The final interval will have boundaries (last_time_interval, Inf)
 #' @param positions amino acid positions to analyse
 #'
 #' @export
@@ -21,14 +21,14 @@ getTimeIntervalSubstitutionRatios = function(
 
     tree_tibble_filtered = filter(
       tree_and_sequences$tree_tibble,
-      as_date(
+      lubridate::as_date(
         estimated_date_nearest,
         format = c("%Y-%m-%d", "%Y-%m", "%Y")
-      ) >= as_date(time_boundaries[[i]]),
-      as_date(
+      ) >= lubridate::as_date(time_boundaries[[i]]),
+      lubridate::as_date(
         estimated_date_nearest,
         format = c("%Y-%m-%d", "%Y-%m", "%Y")
-      ) < as_date(time_boundaries[[i+1]])
+      ) < lubridate::as_date(time_boundaries[[i+1]])
     )
 
     if (nrow(tree_tibble_filtered) == 0) next
@@ -56,6 +56,14 @@ getTimeIntervalSubstitutionRatios = function(
   ratio_list
 }
 
+#' Helper function to get information about nodes in the tree
+#'
+#' Useful for learning more about occurrences of substitutions of interest - e.g. genetic context
+#'
+#' @param tree_and_sequences ...
+#' @param nodes nodes to get info about
+#' @param comparison_sequence for genetic context information
+#'
 #'@export
 getInfoAboutNodes = function(
     tree_and_sequences,
@@ -69,7 +77,7 @@ getInfoAboutNodes = function(
 
   recent_occurrence_descs = map(
     recent_occurrences$node,
-    ~c(.x, convergence:::getDescendants(tree_and_sequences$tree, .x))
+    ~c(.x, fastGetDescendants(tree_and_sequences$tree, .x))
   )
 
   recent_occurrence_descs_info = map(
@@ -107,12 +115,12 @@ getInfoAboutNodes = function(
             dna_sequence,
             simplify = F
           ),
-          syn_diff_from_root = map2(
+          syn_diff_from_root = purrr::map2(
             dna_diff_from_root,
             aa_diff_from_root,
             function(dna,aa){
-              dna_at = ceiling(as.integer(str_sub(dna, 2, -2))/3)
-              aa_at = as.integer(str_sub(aa, 2, -2))
+              dna_at = ceiling(as.integer(stringr::str_sub(dna, 2, -2))/3)
+              aa_at = as.integer(stringr::str_sub(aa, 2, -2))
 
               dna[!dna_at %in% aa_at]
             }
@@ -137,6 +145,9 @@ getInfoAboutNodes = function(
   recent_occurrence_descs_info
 }
 
+#' Get the consensus sequence from a vector of sequences
+#' @param sequences a vector of sequences
+#'
 #' @export
 getConsensus = function(sequences){
   Biostrings::consensusMatrix(sequences) %>%

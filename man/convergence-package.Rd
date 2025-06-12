@@ -4,16 +4,12 @@
 \name{convergence-package}
 \alias{convergence}
 \alias{convergence-package}
-\title{convergence: What the Package Does (Title Case)}
+\title{convergence: Convergence functions}
 \description{
-More about what it does (maybe more than one line) Use four spaces when indenting paragraphs within the Description.
+Functions for calculating convergence ratios.
 }
-\seealso{
-Useful links:
-\itemize{
-  \item \url{https://github.com/SamT123/convergence}
-  \item Report bugs at \url{https://github.com/SamT123/convergence/issues}
-}
+\author{
+\strong{Maintainer}: Sam Turner \email{sat65@canm.ac.uk}
 
 }
 \keyword{internal}

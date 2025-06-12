@@ -133,6 +133,7 @@ sampleFromTModel = function(n, parameters, mutations_per_site, pois = T){
 
 }
 
+#' Synonymous rate variation models
 #'@export
 models = list(
   normal_model = list(
@@ -176,7 +177,7 @@ fitNoiseModel = function(
     select(mutation, mutclass, expected_n, O)
 
 
-  model = str_replace_all(
+  model = stringr::str_replace_all(
     model_template,
     "N",
     as.character(nrow(synonymous_nuc_table_formatted))
@@ -210,14 +211,14 @@ fitNoiseModel = function(
 #   nuc_counts_long = nuc_counts %>%
 #     mutate(
 #       n = n_mutations_individual_positions,
-#       mutation = pmap(
+#       mutation = purrr::pmap(
 #         list(from, to, n),
 #         \(f,t,x) paste0(f, names(x), t)
 #       ),
 #       mutation_class = paste0(from, to),
 #       expected_n = mutations_per_site
 #     ) %>%
-#     unnest(c(mutation, n)) %>%
+#     tidyr::unnest(c(mutation, n)) %>%
 #     select(
 #       from,
 #       to,
@@ -245,10 +246,10 @@ addPValuesToMutationTable = function(mutation_table, nuc_counts, sampling_functi
     nuc_counts$from_to
   )
 
-  mutation_table$n_samples = map(
+  mutation_table$n_samples = purrr::map(
     mutation_table$components,
     function(components){
-      component_samples = map(
+      component_samples = purrr::map(
         components,
         ~sampling_function(
           1e4,
@@ -263,7 +264,7 @@ addPValuesToMutationTable = function(mutation_table, nuc_counts, sampling_functi
     }
   )
 
-  mutation_table$p = map2_dbl(
+  mutation_table$p = purrr::map2_dbl(
     mutation_table$n,
     mutation_table$n_samples,
     ~mean(.y>=.x)

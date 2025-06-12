@@ -1,3 +1,12 @@
+
+#' Calculate log convergence ratios
+#'
+#' @param t_and_s_filtered a list containing `tree` and `tree_tibble`
+#' @param nuc_rates from `getTreeSizeAndNucRates`
+#' @param tree_size_fn from `getTreeSizeAndNucRates`
+#' @param sampling_function from `getTreeSizeAndNucRates`
+#' @param positions aa positions for which to calculate log convergence
+#'
 #'@export
 getSubstitutionRatios = function(
     t_and_s_filtered,
@@ -28,7 +37,7 @@ getSubstitutionRatios = function(
 
   mutation_table = summariseMutationTableToAAsAndSyns(mutation_table)
 
-  mutation_table = map(
+  mutation_table = purrr::map(
     mutation_table,
     ~addPValuesToMutationTable(.x, nuc_rates, sampling_function)
 
@@ -40,7 +49,7 @@ getSubstitutionRatios = function(
 
 # gets all codons at each amino acid position
 getCodonTable = function(tree_tibble, positions, min_prop = 0, min_count = 1){
-  codons = map(
+  codons = purrr::map(
     positions,
     function(aa_pos){
       codons = substr(
@@ -49,10 +58,10 @@ getCodonTable = function(tree_tibble, positions, min_prop = 0, min_count = 1){
         aa_pos*3
       )
       counts = sort(table(codons))
-      counts = counts[!str_detect(names(counts), "N")]
+      counts = counts[!stringr::str_detect(names(counts), "N")]
       props = counts / sum(counts)
       props = props[props >= min_prop & counts >= min_count]
-      whiches = map(names(props), ~tree_tibble$node[which(codons == .x)])
+      whiches = purrr::map(names(props), ~tree_tibble$node[which(codons == .x)])
 
       list(
         codons = names(props),
@@ -64,13 +73,13 @@ getCodonTable = function(tree_tibble, positions, min_prop = 0, min_count = 1){
 
   codon_table = tibble(
     at = positions,
-    codon = map(codons, "codons"),
-    props = map(codons, "props"),
-    nodes = map(codons, "nodes")
+    codon = purrr::map(codons, "codons"),
+    props = purrr::map(codons, "props"),
+    nodes = purrr::map(codons, "nodes")
   ) %>%
-    unnest(c(codon, props, nodes))
+    tidyr::unnest(c(codon, props, nodes))
 
-  codon_table$tip_nodes = map(
+  codon_table$tip_nodes = purrr::map(
     codon_table$nodes,
     ~.x[!is.na(tree_tibble$dna_sequence[match(.x, tree_tibble$node)])]
   )
@@ -94,7 +103,7 @@ splitFourFoldSynPositionsFromSequenceTable = function(
   )
 
   four_fold_syn_sites_idx = split(
-    as.integer(str_sub(names(sequences_at_four_fold_syn_sites_idx), 4)),
+    as.integer(stringr::str_sub(names(sequences_at_four_fold_syn_sites_idx), 4)),
     sequences_at_four_fold_syn_sites_idx
   )
 
@@ -117,7 +126,7 @@ addExpectedMutationsToCodonTable = function(
     threshold = 0.95
   ) * 3
 
-  sequences_at_four_fold_syn_sites = map(
+  sequences_at_four_fold_syn_sites = purrr::map(
     four_fold_syn_sites,
     ~substr(tree_tibble$reconstructed_dna_sequence, .x, .x)
   ) %>%
@@ -176,20 +185,20 @@ addObservedMutationCounts = function(codon_table, tree_tibble){
 
   mutation_table = codon_table %>%
     ungroup() %>%
-    mutate(at = map(at, ~seq((.x-1)*3+1, .x*3))) %>%
-    unnest(at) %>%
+    mutate(at = purrr::map(at, ~seq((.x-1)*3+1, .x*3))) %>%
+    tidyr::unnest(at) %>%
     mutate(
       at_m3 = 1+((at-1)%%3),
       from = substr(codon, at_m3, at_m3),
       to = list(c("A", "T", "C", "G")),
     ) %>%
-    unnest(to) %>%
+    tidyr::unnest(to) %>%
     filter(from != to) %>%
     mutate(
       from_to = paste0(from, to),
       nt_mutation = paste0(from, at, to),
 
-      mutations_per_site_interp = map2_dbl(
+      mutations_per_site_interp = purrr::map2_dbl(
         mutations_per_site_interp,
         from_to,
         ~unlist(.x[[.y]])
@@ -201,20 +210,20 @@ addObservedMutationCounts = function(codon_table, tree_tibble){
 
   observed_mutations = tree_tibble %>%
     select(nt_mutations, nt_mutations_is_single, codon_changes, aa_mutations) %>%
-    unnest(c(nt_mutations, nt_mutations_is_single, codon_changes, aa_mutations)) %>%
+    tidyr::unnest(c(nt_mutations, nt_mutations_is_single, codon_changes, aa_mutations)) %>%
     filter(nt_mutations_is_single) %>%
     group_by(nt_mutations, codon_changes) %>%
     reframe(
       n = n(),
       aa_mutations = list(unique(aa_mutations)),
-      codon_from = str_sub(unique(codon_changes), 1, 3),
+      codon_from = stringr::str_sub(unique(codon_changes), 1, 3),
       .groups = "drop"
     ) %>%
     ungroup() %>%
     mutate(
-      from = str_sub(nt_mutations, 1, 1),
-      at = str_sub(nt_mutations, 2, -2),
-      to = str_sub(nt_mutations, -1, -1),
+      from = stringr::str_sub(nt_mutations, 1, 1),
+      at = stringr::str_sub(nt_mutations, 2, -2),
+      to = stringr::str_sub(nt_mutations, -1, -1),
       aa_mutation = unlist(aa_mutations),
       nt_mutation = nt_mutations
     )
@@ -240,7 +249,7 @@ addObservedMutationCounts = function(codon_table, tree_tibble){
         Biostrings::GENETIC_CODE[codon],
         ceiling(at / 3),
         Biostrings::GENETIC_CODE[
-          pmap_chr(list(codon, at, to), function(codon,at,to){applySubstitutions(
+          purrr::pmap_chr(list(codon, at, to), function(codon,at,to){applySubstitutions(
             codon,
             paste0("X", 1+(unique(at)-1) %% 3, unique(to))
           )})]
@@ -258,9 +267,9 @@ summariseMutationTableToAAsAndSyns  = function(mutation_table){
       is_syn = (
         Biostrings::GENETIC_CODE[codon] ==
           Biostrings::GENETIC_CODE[
-            pmap_chr(
+            purrr::pmap_chr(
               list(codon, at, to),
-              function(codon,at,to){convergence:::applySubstitutions(
+              function(codon,at,to){applySubstitutions(
                 codon,
                 paste0("X", 1+(unique(at)-1) %% 3, unique(to))
               )}
@@ -279,8 +288,8 @@ summariseMutationTableToAAsAndSyns  = function(mutation_table){
         components = list(list(list(
           nt_mutation = (nt_mutation),
           nt_mutation_class = paste0(
-            str_sub(nt_mutation, 1, 1),
-            str_sub(nt_mutation, -1, -1)
+            stringr::str_sub(nt_mutation, 1, 1),
+            stringr::str_sub(nt_mutation, -1, -1)
           ),
           tree_size = (tree_size),
           expected_n = (expected_n)
@@ -293,9 +302,9 @@ summariseMutationTableToAAsAndSyns  = function(mutation_table){
       ) %>%
       arrange(-ratio) %>%
       mutate(
-        from = str_sub(nt_mutation, 1, 1),
-        at = str_sub(nt_mutation, 2, -2),
-        to = str_sub(nt_mutation, -1, -1)
+        from = stringr::str_sub(nt_mutation, 1, 1),
+        at = stringr::str_sub(nt_mutation, 2, -2),
+        to = stringr::str_sub(nt_mutation, -1, -1)
       )
   }
 
@@ -307,7 +316,7 @@ summariseMutationTableToAAsAndSyns  = function(mutation_table){
       n = sum(n),
       aa_mutation = unique(aa_mutation),
       is_syn = Biostrings::GENETIC_CODE[codon] == Biostrings::GENETIC_CODE[
-        convergence:::applySubstitutions(
+        applySubstitutions(
           codon,
           paste0("X", 1+(unique(at)-1) %% 3, unique(to))
         )],
@@ -321,8 +330,8 @@ summariseMutationTableToAAsAndSyns  = function(mutation_table){
       components = list(list(
         nt_mutation = (nt_mutation),
         nt_mutation_class = paste0(
-          str_sub(nt_mutation, 1, 1),
-          str_sub(nt_mutation, -1, -1)
+          stringr::str_sub(nt_mutation, 1, 1),
+          stringr::str_sub(nt_mutation, -1, -1)
         ),
         tree_size = (tree_size),
         expected_n = (expected_n)
@@ -342,9 +351,9 @@ summariseMutationTableToAAsAndSyns  = function(mutation_table){
     arrange(-ratio) %>%
     mutate(
       aa_mutation = factor(aa_mutation, levels = unique(aa_mutation)),
-      from = str_sub(aa_mutation, 1, 1),
-      at = str_sub(aa_mutation, 2, -2),
-      to = str_sub(aa_mutation, -1, -1)
+      from = stringr::str_sub(aa_mutation, 1, 1),
+      at = stringr::str_sub(aa_mutation, 2, -2),
+      to = stringr::str_sub(aa_mutation, -1, -1)
     )
 
   list(aas = aa_mutation_table, syn_nucs = syn_nt_mutations)

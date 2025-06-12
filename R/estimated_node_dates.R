@@ -36,7 +36,7 @@ addEstimatedNodeDates = function(tree_and_sequences){
   tree_and_sequences$tree_tibble$Collection_date_clean = tree_and_sequences$tree_tibble$Collection_date
 
   tree_and_sequences$tree_tibble$Collection_date_clean[
-    tree_and_sequences$tree_tibble$Collection_date_clean < as_date("1968-01-01")
+    tree_and_sequences$tree_tibble$Collection_date_clean < lubridate::as_date("1968-01-01")
   ] = NA
 
   tree_and_sequences$tree_tibble$Collection_date_clean[
@@ -50,13 +50,13 @@ addEstimatedNodeDates = function(tree_and_sequences){
 
   tip_dates = as.character(tip_dates)
 
-  tip_dates[map_lgl(substr(tip_dates, 6, 10) == "01-01", isTRUE)] = substr(
-    tip_dates[map_lgl(substr(tip_dates, 6, 10) == "01-01", isTRUE)],
+  tip_dates[purrr::map_lgl(substr(tip_dates, 6, 10) == "01-01", isTRUE)] = substr(
+    tip_dates[purrr::map_lgl(substr(tip_dates, 6, 10) == "01-01", isTRUE)],
     1, 4
   )
 
-  tip_dates[map_lgl(substr(tip_dates, 9, 10) == "01", isTRUE)] = substr(
-    tip_dates[map_lgl(substr(tip_dates, 9, 10) == "01", isTRUE)],
+  tip_dates[purrr::map_lgl(substr(tip_dates, 9, 10) == "01", isTRUE)] = substr(
+    tip_dates[purrr::map_lgl(substr(tip_dates, 9, 10) == "01", isTRUE)],
     1, 7
   )
 

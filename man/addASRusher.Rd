@@ -2,7 +2,7 @@
 % Please edit documentation in R/ASR_functions.R
 \name{addASRusher}
 \alias{addASRusher}
-\title{Add ancestral state reconstruction to `tree_and_sequences`}
+\title{Add ancestral state reconstruction to \code{tree_and_sequences}}
 \usage{
 addASRusher(tree_and_sequences, aa_ref, nuc_ref)
 }
@@ -14,8 +14,8 @@ addASRusher(tree_and_sequences, aa_ref, nuc_ref)
 \item{nuc_ref}{nucleotide reference sequence for alignment}
 }
 \description{
-Add ancestral state reconstruction to `tree_and_sequences`
+Add ancestral state reconstruction to \code{tree_and_sequences}
 }
 \details{
-The sequence dataframe in `tree_and_sequences` must contain columns `Isolate_unique_identifier` and `dna_sequence`. Other columns containing inforamtion about the sequences can also be present, and wil be preserved. Tip names in the tree in `tree_and_sequences` should correspond to names in the `Isolate_unique_identifier` column.
+The sequence dataframe in \code{tree_and_sequences} must contain columns \code{Isolate_unique_identifier} and \code{dna_sequence}. Other columns containing inforamtion about the sequences can also be present, and wil be preserved. Tip names in the tree in \code{tree_and_sequences} should correspond to names in the \code{Isolate_unique_identifier} column.
 }

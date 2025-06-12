@@ -4,7 +4,11 @@
 ## usethis namespace: start
 #' @importFrom Biostrings consensusMatrix
 #' @importFrom Biostrings GENETIC_CODE
+#' @importFrom stats quantile
+#' @importFrom stats rnorm
+#' @importFrom stats rpois
+#' @importFrom stats setNames
 ## usethis namespace: end
-#' @import tidyverse
+#' @import dplyr
 #' @import magrittr
 NULL

@@ -15,12 +15,19 @@ getTreeSizeAndNucRates(
 )
 }
 \arguments{
-\item{tree_and_sequences}{a list containing `tree` and `tree_tibble`
+\item{tree_and_sequences}{a list containing \code{tree} and \code{tree_tibble}}
 
-tree_size_ratios are the
-tree_size = tree_size,
-nuc_rates = nuc_rates,
-fast_tree_size_fn = tree_size_fn}
+\item{noise_model}{one of the 'noise_models'}
+
+\item{n_iter}{iterations for rstan}
+
+\item{n_chains}{chains for rstan}
+
+\item{excluded_positions}{positions to exclude for synonymous rate variation calculation}
+
+\item{use_fitted_rates}{should the fitted mutation rates be used, rather than simply taking the mean of the observed values?}
+
+\item{seed}{seed for rstan}
 }
 \description{
 Get information about a tree required for calculating convergence scores
