@@ -1,4 +1,3 @@
-
 #' Title
 #'
 #' @param tree_and_sequences tree_and_sequences list
@@ -8,30 +7,32 @@
 #'
 #' @export
 getTimeIntervalSubstitutionRatios = function(
-    tree_and_sequences,
-    tree_info,
-    time_boundaries,
-    positions = 1:550
-){
-
+  tree_and_sequences,
+  tree_info,
+  time_boundaries,
+  positions = 1:550
+) {
   time_boundaries = c(time_boundaries, "2100-01-01")
 
   ratio_list = list()
-  for (i in seq_along(time_boundaries[-1])){
-
+  for (i in seq_along(time_boundaries[-1])) {
     tree_tibble_filtered = filter(
       tree_and_sequences$tree_tibble,
       lubridate::as_date(
         estimated_date_nearest,
         format = c("%Y-%m-%d", "%Y-%m", "%Y")
-      ) >= lubridate::as_date(time_boundaries[[i]]),
+      ) >=
+        lubridate::as_date(time_boundaries[[i]]),
       lubridate::as_date(
         estimated_date_nearest,
         format = c("%Y-%m-%d", "%Y-%m", "%Y")
-      ) < lubridate::as_date(time_boundaries[[i+1]])
+      ) <
+        lubridate::as_date(time_boundaries[[i + 1]])
     )
 
-    if (nrow(tree_tibble_filtered) == 0) next
+    if (nrow(tree_tibble_filtered) == 0) {
+      next
+    }
 
     ratios = getSubstitutionRatios(
       list(
@@ -43,11 +44,14 @@ getTimeIntervalSubstitutionRatios = function(
       positions = positions
     )
 
-
     time_interval_name = paste0(
       as.character(time_boundaries[[i]]),
       " to ",
-      ifelse(i == length(time_boundaries)-1, "Inf", as.character(time_boundaries[[i+1]]))
+      ifelse(
+        i == length(time_boundaries) - 1,
+        "Inf",
+        as.character(time_boundaries[[i + 1]])
+      )
     )
 
     ratio_list[[time_interval_name]] = ratios
@@ -66,24 +70,21 @@ getTimeIntervalSubstitutionRatios = function(
 #'
 #'@export
 getInfoAboutNodes = function(
-    tree_and_sequences,
-    nodes,
-    comparison_sequence
+  tree_and_sequences,
+  nodes,
+  comparison_sequence
 ) {
-
   recent_occurrences = tree_and_sequences$tree_tibble %>%
     filter(node %in% nodes)
 
-
-  recent_occurrence_descs = map(
+  recent_occurrence_descs = purrr::map(
     recent_occurrences$node,
-    ~c(.x, fastGetDescendants(tree_and_sequences$tree, .x))
+    ~ c(.x, fastGetDescendants(tree_and_sequences$tree, .x))
   )
 
-  recent_occurrence_descs_info = map(
+  recent_occurrence_descs_info = purrr::map(
     recent_occurrence_descs,
-    function(desc_nodes){
-
+    function(desc_nodes) {
       node_root_sequence_dna = filter(
         tree_and_sequences$tree_tibble,
         node == desc_nodes[[1]]
@@ -95,8 +96,8 @@ getInfoAboutNodes = function(
       root_diff_to_comparison_comparison_sequence = seqUtils::get_substitutions(
         comparison_sequence,
         node_root_sequence_aa
-      ) %>% paste(collapse = " ")
-
+      ) %>%
+        paste(collapse = " ")
 
       sequences = filter(
         tree_and_sequences$tree_tibble,
@@ -118,8 +119,8 @@ getInfoAboutNodes = function(
           syn_diff_from_root = purrr::map2(
             dna_diff_from_root,
             aa_diff_from_root,
-            function(dna,aa){
-              dna_at = ceiling(as.integer(stringr::str_sub(dna, 2, -2))/3)
+            function(dna, aa) {
+              dna_at = ceiling(as.integer(stringr::str_sub(dna, 2, -2)) / 3)
               aa_at = as.integer(stringr::str_sub(aa, 2, -2))
 
               dna[!dna_at %in% aa_at]
@@ -127,13 +128,17 @@ getInfoAboutNodes = function(
           ),
 
           aa_diff_from_root = aa_diff_from_root %>%
-            map_chr(~paste(.x, collapse = " ")),
+            map_chr(~ paste(.x, collapse = " ")),
 
           syn_diff_from_root = syn_diff_from_root %>%
-            map_chr(~paste(.x, collapse = " ")),
-
+            map_chr(~ paste(.x, collapse = " ")),
         ) %>%
-        select(Isolate_name_standard, Collection_date, aa_diff_from_root, syn_diff_from_root)
+        select(
+          Isolate_name_standard,
+          Collection_date,
+          aa_diff_from_root,
+          syn_diff_from_root
+        )
 
       list(
         root_diff_to_comparator = root_diff_to_comparison_comparison_sequence,
@@ -149,8 +154,12 @@ getInfoAboutNodes = function(
 #' @param sequences a vector of sequences
 #'
 #' @export
-getConsensus = function(sequences){
+getConsensus = function(sequences) {
   Biostrings::consensusMatrix(sequences) %>%
-    {apply(., 2, \(x){rownames(.)[which.max(x)]})} %>%
+    {
+      apply(., 2, \(x) {
+        rownames(.)[which.max(x)]
+      })
+    } %>%
     paste(collapse = "")
 }

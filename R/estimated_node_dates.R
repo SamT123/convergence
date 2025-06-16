@@ -9,8 +9,7 @@
 #' - Earliest date of any descendant tip (but this is very sensitive to misplaced sequences)
 #'
 #'@export
-addEstimatedNodeDates = function(tree_and_sequences){
-
+addEstimatedNodeDates = function(tree_and_sequences) {
   name_to_hash = setNames(
     openssl::md4(tree_and_sequences$tree$tip.label),
     tree_and_sequences$tree$tip.label
@@ -22,42 +21,53 @@ addEstimatedNodeDates = function(tree_and_sequences){
   )
 
   tree_and_sequences$tree_tibble$label = name_to_hash[
-    tree_and_sequences$tree_tibble$label]
+    tree_and_sequences$tree_tibble$label
+  ]
 
   tree_and_sequences$tree$tip.label = name_to_hash[
-    tree_and_sequences$tree$tip.label]
+    tree_and_sequences$tree$tip.label
+  ]
 
   tree_and_sequences$tree$node.label = 1:ape::Nnode(tree_and_sequences$tree)
   tree_and_sequences$tree_tibble$label[
-    ape::Ntip(tree_and_sequences$tree) + (1:ape::Nnode(tree_and_sequences$tree)) ] =
+    ape::Ntip(tree_and_sequences$tree) + (1:ape::Nnode(tree_and_sequences$tree))
+  ] =
     1:ape::Nnode(tree_and_sequences$tree)
-
 
   tree_and_sequences$tree_tibble$Collection_date_clean = tree_and_sequences$tree_tibble$Collection_date
 
   tree_and_sequences$tree_tibble$Collection_date_clean[
-    tree_and_sequences$tree_tibble$Collection_date_clean < lubridate::as_date("1968-01-01")
+    tree_and_sequences$tree_tibble$Collection_date_clean <
+      lubridate::as_date("1968-01-01")
   ] = NA
 
   tree_and_sequences$tree_tibble$Collection_date_clean[
-    year(tree_and_sequences$tree_tibble$Collection_date_clean) != tree_and_sequences$tree_tibble$year
+    year(tree_and_sequences$tree_tibble$Collection_date_clean) !=
+      tree_and_sequences$tree_tibble$year
   ] = NA
 
-
   tip_dates = tree_and_sequences$tree_tibble$Collection_date_clean[
-    match(tree_and_sequences$tree$tip.label, tree_and_sequences$tree_tibble$label)
+    match(
+      tree_and_sequences$tree$tip.label,
+      tree_and_sequences$tree_tibble$label
+    )
   ]
 
   tip_dates = as.character(tip_dates)
 
-  tip_dates[purrr::map_lgl(substr(tip_dates, 6, 10) == "01-01", isTRUE)] = substr(
+  tip_dates[purrr::map_lgl(
+    substr(tip_dates, 6, 10) == "01-01",
+    isTRUE
+  )] = substr(
     tip_dates[purrr::map_lgl(substr(tip_dates, 6, 10) == "01-01", isTRUE)],
-    1, 4
+    1,
+    4
   )
 
   tip_dates[purrr::map_lgl(substr(tip_dates, 9, 10) == "01", isTRUE)] = substr(
     tip_dates[purrr::map_lgl(substr(tip_dates, 9, 10) == "01", isTRUE)],
-    1, 7
+    1,
+    7
   )
 
   # nearest tip dates
@@ -89,10 +99,12 @@ addEstimatedNodeDates = function(tree_and_sequences){
     node_dates_from_nearest_desc_tips
 
   tree_and_sequences$tree_tibble$label = hash_to_name[
-    tree_and_sequences$tree_tibble$label]
+    tree_and_sequences$tree_tibble$label
+  ]
 
   tree_and_sequences$tree$tip.label = hash_to_name[
-    tree_and_sequences$tree$tip.label]
+    tree_and_sequences$tree$tip.label
+  ]
 
   tree_and_sequences
 }

@@ -36,28 +36,32 @@ normal_model_specification = "data {
       for ( i in 1:N ) log_lik[i] = poisson_lpmf( O[i] | lambda[i] );
   }"
 
-extractParametersFromNormalModel = function(model_fit){
+extractParametersFromNormalModel = function(model_fit) {
   mutation_order = model_fit$mutation_order
   parameters = list()
-  for (i in seq_along(mutation_order)){
+  for (i in seq_along(mutation_order)) {
     mutation = mutation_order[[i]]
     parameters[[mutation]] = list(
-      centrality = bayestestR::map_estimate(model_fit$model_samples$log_mean[,i])[[2]],
-      scale = bayestestR::map_estimate(model_fit$model_samples$std[,i])[[2]]
+      centrality = bayestestR::map_estimate(
+        model_fit$model_samples$log_mean[, i]
+      )[[2]],
+      scale = bayestestR::map_estimate(
+        model_fit$model_samples$std[, i]
+      )[[2]]
     )
   }
   parameters
 }
 
-sampleFromNormalModel = function(n, parameters, mutations_per_site, pois = T){
+sampleFromNormalModel = function(n, parameters, mutations_per_site, pois = T) {
   means = 2**(log2(mutations_per_site) +
-                rnorm(
-                  n,
-                  parameters$centrality,
-                  parameters$scale
-                ))
+    rnorm(
+      n,
+      parameters$centrality,
+      parameters$scale
+    ))
 
-  if (pois){
+  if (pois) {
     return(rpois(n, means))
   } else {
     return(means)
@@ -101,36 +105,40 @@ t_model_specification = "data {
       for ( i in 1:N ) log_lik[i] = poisson_lpmf( O[i] | lambda[i] );
   }"
 
-extractParametersFromTModel = function(model_fit){
+extractParametersFromTModel = function(model_fit) {
   mutation_order = model_fit$mutation_order
   parameters = list()
-  for (i in seq_along(mutation_order)){
+  for (i in seq_along(mutation_order)) {
     mutation = mutation_order[[i]]
     parameters[[mutation]] = list(
-      centrality = bayestestR::map_estimate(model_fit$model_samples$log_mean[,i])[[2]],
-      scale = bayestestR::map_estimate(model_fit$model_samples$std[,i])[[2]],
-      df = bayestestR::map_estimate(model_fit$model_samples$nu[,i])[[2]]
+      centrality = bayestestR::map_estimate(
+        model_fit$model_samples$log_mean[, i]
+      )[[2]],
+      scale = bayestestR::map_estimate(
+        model_fit$model_samples$std[, i]
+      )[[2]],
+      df = bayestestR::map_estimate(
+        model_fit$model_samples$nu[, i]
+      )[[2]]
     )
   }
   parameters
 }
 
-sampleFromTModel = function(n, parameters, mutations_per_site, pois = T){
-
+sampleFromTModel = function(n, parameters, mutations_per_site, pois = T) {
   means = 2**(log2(mutations_per_site) +
-                ggdist::rstudent_t(
-                  n,
-                  parameters$df,
-                  parameters$centrality,
-                  parameters$scale
-                ))
+    ggdist::rstudent_t(
+      n,
+      parameters$df,
+      parameters$centrality,
+      parameters$scale
+    ))
 
-  if (pois){
+  if (pois) {
     return(rpois(n, means))
   } else {
     return(means)
   }
-
 }
 
 #' Synonymous rate variation models
@@ -147,21 +155,21 @@ models = list(
     extract_parameters_function = extractParametersFromTModel,
     sampling_function = sampleFromTModel
   )
-
 )
 
 
 fitNoiseModel = function(
-    synonymous_nuc_table,
-    model_template,
-    n_chains = 3,
-    n_iter = 2000,
-    n_noise_samples = 10000,
-    seed = NULL,
-    model_name = NULL
+  synonymous_nuc_table,
+  model_template,
+  n_chains = 3,
+  n_iter = 2000,
+  n_noise_samples = 10000,
+  seed = NULL,
+  model_name = NULL
 ) {
-
-  if (is.null(seed)) seed = sample.int(.Machine$integer.max, 1)
+  if (is.null(seed)) {
+    seed = sample.int(.Machine$integer.max, 1)
+  }
 
   mutation_order = unique(
     paste0(synonymous_nuc_table$from, synonymous_nuc_table$to)
@@ -175,7 +183,6 @@ fitNoiseModel = function(
       O = n
     ) %>%
     select(mutation, mutclass, expected_n, O)
-
 
   model = stringr::str_replace_all(
     model_template,
@@ -239,8 +246,11 @@ fitNoiseModel = function(
 #   fit
 # }
 
-addPValuesToMutationTable = function(mutation_table, nuc_counts, sampling_function){
-
+addPValuesToMutationTable = function(
+  mutation_table,
+  nuc_counts,
+  sampling_function
+) {
   parameters = setNames(
     nuc_counts$parameters,
     nuc_counts$from_to
@@ -248,10 +258,10 @@ addPValuesToMutationTable = function(mutation_table, nuc_counts, sampling_functi
 
   mutation_table$n_samples = purrr::map(
     mutation_table$components,
-    function(components){
+    function(components) {
       component_samples = purrr::map(
         components,
-        ~sampling_function(
+        ~ sampling_function(
           1e4,
           parameters[[.x[["nt_mutation_class"]]]],
           .x[["expected_n"]]
@@ -259,7 +269,7 @@ addPValuesToMutationTable = function(mutation_table, nuc_counts, sampling_functi
       )
       purrr::reduce(
         component_samples,
-        \(x,y) x+y
+        \(x, y) x + y
       )
     }
   )
@@ -267,8 +277,7 @@ addPValuesToMutationTable = function(mutation_table, nuc_counts, sampling_functi
   mutation_table$p = purrr::map2_dbl(
     mutation_table$n,
     mutation_table$n_samples,
-    ~mean(.y>=.x)
+    ~ mean(.y >= .x)
   )
   select(mutation_table, -n_samples)
 }
-

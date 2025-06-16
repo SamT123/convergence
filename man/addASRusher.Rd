@@ -4,7 +4,7 @@
 \alias{addASRusher}
 \title{Add ancestral state reconstruction to \code{tree_and_sequences}}
 \usage{
-addASRusher(tree_and_sequences, aa_ref, nuc_ref)
+addASRusher(tree_and_sequences, aa_ref, nuc_ref, usher_path)
 }
 \arguments{
 \item{tree_and_sequences}{list with a sequence dataframe (see details) and a phylogenetic tree}
@@ -12,6 +12,8 @@ addASRusher(tree_and_sequences, aa_ref, nuc_ref)
 \item{aa_ref}{amino acid reference sequence for alignment}
 
 \item{nuc_ref}{nucleotide reference sequence for alignment}
+
+\item{usher_path}{path to usher installation}
 }
 \description{
 Add ancestral state reconstruction to \code{tree_and_sequences}
