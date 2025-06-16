@@ -1,27 +1,25 @@
-
 getCDF = function(
-    values,
-    cdf_range = range(values),
-    resolution = diff(cdf_range)/1000
+  values,
+  cdf_range = range(values),
+  resolution = diff(cdf_range) / 1000
 ) {
-
   sample_points = seq(
     cdf_range[[1]],
-    resolution*ceiling(cdf_range[[2]]/resolution),
+    resolution * ceiling(cdf_range[[2]] / resolution),
     resolution
   )
   cdf = c()
-  for (sp in sample_points){
-    cdf[as.character(sp)] = mean(values<sp)
+  for (sp in sample_points) {
+    cdf[as.character(sp)] = mean(values < sp)
   }
   cdf
 }
 
 getAllCladeSizes = function(
-    tree_and_sequences,
-    tree_tibble_for_node_search = tree_and_sequences$tree_tibble,
-    ps = F
-){
+  tree_and_sequences,
+  tree_tibble_for_node_search = tree_and_sequences$tree_tibble,
+  ps = F
+) {
   aa_clade_sizes = rep(
     list(NULL),
     length(unique(unlist(tree_tibble_for_node_search$aa_mutations_nonsyn)))
@@ -48,8 +46,7 @@ getAllCladeSizes = function(
     tree_tibble_for_node_search$node
   ]
 
-  for (i in seq_along(tree_tibble_for_node_search$aa_mutations_nonsyn)){
-
+  for (i in seq_along(tree_tibble_for_node_search$aa_mutations_nonsyn)) {
     mutations = unlist(tree_tibble_for_node_search$aa_mutations_nonsyn[[i]])
 
     aa_clade_sizes[mutations] = purrr::map(
@@ -59,8 +56,7 @@ getAllCladeSizes = function(
     )
   }
 
-  for (i in seq_along(tree_tibble_for_node_search$nt_mutations_syn)){
-
+  for (i in seq_along(tree_tibble_for_node_search$nt_mutations_syn)) {
     mutations = unlist(tree_tibble_for_node_search$nt_mutations_syn[[i]])
 
     syn_nt_clade_sizes[mutations] = purrr::map(
@@ -74,7 +70,7 @@ getAllCladeSizes = function(
   mean_log2_syn_clade_size = mean(log2(all_syn_nt_clade_sizes))
   q0.8_log2_syn_clade_size = quantile(log2(all_syn_nt_clade_sizes), 0.8)
 
-  makeTibble = function(clade_sizes, ps){
+  makeTibble = function(clade_sizes, ps) {
     tib = tibble(
       mutation = names(clade_sizes),
       clade_sizes = clade_sizes
@@ -84,28 +80,32 @@ getAllCladeSizes = function(
 
         mean_log2_clade_size = purrr::map_dbl(
           clade_sizes,
-          ~mean(log2(.x))
+          ~ mean(log2(.x))
         ),
-        mean_log2_clade_size_diff = mean_log2_clade_size - mean_log2_syn_clade_size,
+        mean_log2_clade_size_diff = mean_log2_clade_size -
+          mean_log2_syn_clade_size,
 
         q0.8_log2_clade_size = purrr::map_dbl(
           clade_sizes,
-          ~quantile(log2(.x), 0.8)
+          ~ quantile(log2(.x), 0.8)
         ),
-        q0.8_log2_clade_size_diff = q0.8_log2_clade_size - q0.8_log2_syn_clade_size
+        q0.8_log2_clade_size_diff = q0.8_log2_clade_size -
+          q0.8_log2_syn_clade_size
       )
 
-
-    if (ps){
-
-      quantile_f = function(x) {quantile(x, 0.8)}
-      mean_f = function(x) {mean(x)}
+    if (ps) {
+      quantile_f = function(x) {
+        quantile(x, 0.8)
+      }
+      mean_f = function(x) {
+        mean(x)
+      }
       n_resamples = 1e3
 
-      bootPop = function(sample_size, null_pop, n_boots, summary_fun){
+      bootPop = function(sample_size, null_pop, n_boots, summary_fun) {
         sample(
           x = null_pop,
-          size = sample_size*n_boots,
+          size = sample_size * n_boots,
           replace = T
         ) %>%
           matrix(
@@ -115,17 +115,18 @@ getAllCladeSizes = function(
           apply(2, summary_fun)
       }
 
-      efficient_map = function(v, f, verbose = T, ...){
+      efficient_map = function(v, f, verbose = T, ...) {
         v_unq = unique(v)
-        if (verbose) message('length = ', length(v_unq))
+        if (verbose) {
+          message('length = ', length(v_unq))
+        }
         args = list(...)
         o = list()
-        for (i in seq_along(v_unq)){
+        for (i in seq_along(v_unq)) {
           o[[i]] = f(v_unq[[i]], ...)
         }
         o[match(v, v_unq)]
       }
-
 
       tib = tib %>%
         mutate(
@@ -139,7 +140,7 @@ getAllCladeSizes = function(
           ) %>%
             purrr::map2_dbl(
               q0.8_log2_clade_size,
-              ~mean(.x>=.y)
+              ~ mean(.x >= .y)
             ),
 
           mean_log2_clade_size_diff_p = efficient_map(
@@ -152,13 +153,12 @@ getAllCladeSizes = function(
           ) %>%
             purrr::map2_dbl(
               mean_log2_clade_size,
-              ~mean(.x>=.y)
+              ~ mean(.x >= .y)
             )
         )
     }
     tib
   }
-
 
   list(
     aas = makeTibble(aa_clade_sizes, ps = ps),
@@ -180,30 +180,30 @@ getAllCladeSizes = function(
 #' @return ...
 #' @export
 getCladeSizeCDFs = function(
-    tree_and_sequences,
-    tree_tibble_for_node_search = tree_and_sequences$tree_tibble,
-    aa_substitutions,
-    syn_nuc_mutations,
-    n_bootstraps = 100,
-    max_log2_clade_size = 10,
-    log2_clade_size_resolution = 0.1
-){
-
+  tree_and_sequences,
+  tree_tibble_for_node_search = tree_and_sequences$tree_tibble,
+  aa_substitutions,
+  syn_nuc_mutations,
+  n_bootstraps = 100,
+  max_log2_clade_size = 10,
+  log2_clade_size_resolution = 0.1
+) {
   all_clade_sizes = getAllCladeSizes(
     tree_and_sequences,
     tree_tibble_for_node_search
   )
 
   aa_substitution_clade_sizes = all_clade_sizes$aas %>%
-    {setNames(.$clade_sizes, .$mutation)}
-
-
+    {
+      setNames(.$clade_sizes, .$mutation)
+    }
 
   syn_nuc_mutation_clade_sizes = all_clade_sizes$syn_nucs %>%
-    {setNames(.$clade_sizes, .$mutation)}
+    {
+      setNames(.$clade_sizes, .$mutation)
+    }
 
   all_synonymous_clade_sizes = unlist(all_clade_sizes$syn_nucs$clade_sizes)
-
 
   focal_cdfs = tibble(
     mutation = character(),
@@ -234,7 +234,7 @@ getCladeSizeCDFs = function(
     bootstrap_replicate_id = NA
   )
 
-  for (s in aa_substitutions){
+  for (s in aa_substitutions) {
     focal_cdfs = add_row(
       focal_cdfs,
       mutation = s,
@@ -249,7 +249,7 @@ getCladeSizeCDFs = function(
     )
   }
 
-  for (m in syn_nuc_mutations){
+  for (m in syn_nuc_mutations) {
     focal_cdfs = add_row(
       focal_cdfs,
       mutation = m,
@@ -264,8 +264,7 @@ getCladeSizeCDFs = function(
     )
   }
 
-  for (i in 1:n_bootstraps){
-
+  for (i in 1:n_bootstraps) {
     synonymous_nt_cdfs = add_row(
       synonymous_nt_cdfs,
       mutation = "Any synonymous mutation",
@@ -279,7 +278,7 @@ getCladeSizeCDFs = function(
       bootstrap_replicate_id = i
     )
 
-    for (s in aa_substitutions){
+    for (s in aa_substitutions) {
       focal_cdfs = add_row(
         focal_cdfs,
         mutation = s,
@@ -300,7 +299,7 @@ getCladeSizeCDFs = function(
       )
     }
 
-    for (m in syn_nuc_mutations){
+    for (m in syn_nuc_mutations) {
       focal_cdfs = add_row(
         focal_cdfs,
         mutation = m,
@@ -321,7 +320,7 @@ getCladeSizeCDFs = function(
     }
   }
 
-  focal_cdfs$mutation = as_factor(focal_cdfs$mutation)
+  focal_cdfs$mutation = forcats::as_factor(focal_cdfs$mutation)
 
   focal_cdfs = focal_cdfs %>%
     mutate(
@@ -337,8 +336,8 @@ getCladeSizeCDFs = function(
     ) %>%
     select(-cdf)
 
-  to_intervals = function(cdfs){
-    intervals =  cdfs %>%
+  to_intervals = function(cdfs) {
+    intervals = cdfs %>%
       filter(real_or_bootstrap == "bootstrap") %>%
       group_by(
         mutation,
@@ -353,7 +352,7 @@ getCladeSizeCDFs = function(
     left_join(
       cdfs %>%
         filter(real_or_bootstrap == "real") %>%
-        select(-real_or_bootstrap, - bootstrap_replicate_id),
+        select(-real_or_bootstrap, -bootstrap_replicate_id),
       intervals,
       by = c("mutation", "clade_size")
     )
