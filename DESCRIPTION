@@ -15,6 +15,7 @@ Imports:
     castor,
     dplyr,
     forcats,
+    fs,
     ggdist,
     lubridate,
     magrittr,

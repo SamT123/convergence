@@ -8,7 +8,9 @@ make_cmaple_tree(
   sequences,
   tree_path,
   starting_tree_path = NULL,
-  freeze_starting_tree = F
+  freeze_starting_tree = F,
+  cmaple_path = NULL,
+  out_sequence = NULL
 )
 }
 \arguments{
@@ -19,6 +21,10 @@ make_cmaple_tree(
 \item{starting_tree_path}{path to starting tree containing a subset of the sequences}
 
 \item{freeze_starting_tree}{should the relationships in the starting tree be preserved?}
+
+\item{cmaple_path}{path to your cmaple installation}
+
+\item{out_sequence}{name of outgroup for tree rooting}
 }
 \description{
 Wrapper for CMAPLE
