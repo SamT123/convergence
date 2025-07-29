@@ -10,21 +10,26 @@ getTimeIntervalSubstitutionRatios = function(
   tree_and_sequences,
   tree_info,
   time_boundaries,
-  positions = 1:550
+  positions = 1:550,
+  date_column = "estimated_date_nearest"
 ) {
   time_boundaries = c(time_boundaries, "2100-01-01")
+
+  stopifnot(date_column %in% colnames(tree_and_sequences$tree_tibble))
+  tree_and_sequences$tree_tibble[["DATECOLUMN"]] =
+    tree_and_sequences$tree_tibble[[date_column]]
 
   ratio_list = list()
   for (i in seq_along(time_boundaries[-1])) {
     tree_tibble_filtered = filter(
       tree_and_sequences$tree_tibble,
       lubridate::as_date(
-        estimated_date_nearest,
+        DATECOLUMN,
         format = c("%Y-%m-%d", "%Y-%m", "%Y")
       ) >=
         lubridate::as_date(time_boundaries[[i]]),
       lubridate::as_date(
-        estimated_date_nearest,
+        DATECOLUMN,
         format = c("%Y-%m-%d", "%Y-%m", "%Y")
       ) <
         lubridate::as_date(time_boundaries[[i + 1]])
