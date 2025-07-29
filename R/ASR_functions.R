@@ -260,8 +260,6 @@ fastGetDescendants = function(phy, node) {
 
 
 reconstructNodeSequences = function(tree_tibble) {
-  # browser()
-
   tree_tibble$nt_mutations[tree_tibble$parent == tree_tibble$node] = list(NULL)
   tree_tibble$reconstructed_dna_sequence = NA
 
@@ -274,7 +272,7 @@ reconstructNodeSequences = function(tree_tibble) {
     )$node,
     1
   )
-  # random_tip = sample(tree_tibble$label[!is.na(tree_tibble$dna_sequence)], 1)
+
   nts_to_root = tree_tibble$nt_mutations[getParents(tree_tibble, random_tip)]
   nts_to_root = rev(unlist(nts_to_root))
 
@@ -311,10 +309,6 @@ reconstructNodeSequences = function(tree_tibble) {
   }
 
   tree_tibble$reconstructed_dna_sequence = reconstructed_dna_sequences
-  # tree_tibble$reconstructed_codons = purrr::map(
-  #   tree_tibble$reconstructed_dna_sequence,
-  #   ~substring(.x, seq(1, nchar(.x), 3), seq(3, nchar(.x), 3))
-  # )
 
   tree_tibble
 }
@@ -364,6 +358,14 @@ remakeTreeAndSequencesWithUsherASR = function(
   tree_and_sequences$tree_tibble = reconstructNodeSequences(
     tree_and_sequences$tree_tibble
   )
+
+  tree_and_sequences$tree_tibble = tree_and_sequences$tree_tibble %>%
+    mutate(
+      reconstructed_aa_sequence = seqUtils::translate(
+        reconstructed_dna_sequence,
+        aa_ref
+      )
+    )
 
   tree_and_sequences$tree_tibble$codon_changes = purrr::pmap(
     list(
