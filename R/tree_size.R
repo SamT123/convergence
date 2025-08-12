@@ -12,8 +12,6 @@
 getTreeSizeAndNucRates = function(
   tree_and_sequences,
   noise_model,
-  n_iter = 2000,
-  n_chains = 3,
   excluded_positions = c(),
   use_fitted_rates = T,
   seed = NULL
@@ -25,31 +23,16 @@ getTreeSizeAndNucRates = function(
 
   nuc_counts_with_model = addMutationRateModel(
     nuc_counts,
-    model = noise_model,
-    n_iter = n_iter,
-    n_chains = n_chains,
-    seed = seed
+    model = noise_model
   )
+
   nuc_counts = nuc_counts_with_model[["nuc_counts"]]
   model_fit = nuc_counts_with_model[["model_fit"]]
 
   if (use_fitted_rates) {
-    nuc_counts$mutations_per_site = purrr::pmap_dbl(
-      list(
-        .x = nuc_counts$parameters,
-        .y = nuc_counts$mutations_per_site_measured
-      ),
-      \(.x, .y) {
-        2**(log2(.y) + .x$centrality)
-      }
-    )
-
-    nuc_counts$parameters = purrr::map(
+    nuc_counts$mutations_per_site = purrr::map_dbl(
       nuc_counts$parameters,
-      \(p) {
-        p$centrality = 0
-        p
-      }
+      "centrality"
     )
   } else {
     nuc_counts$mutations_per_site = nuc_counts$mutations_per_site_measured
@@ -167,10 +150,7 @@ getNucCounts = function(
 
 addMutationRateModel = function(
   nuc_counts,
-  model,
-  n_chains,
-  n_iter,
-  seed = NULL
+  model
 ) {
   nuc_counts_long = nuc_counts %>%
     mutate(
@@ -193,22 +173,23 @@ addMutationRateModel = function(
       n
     )
 
-  model_fit = fitNoiseModel(
-    nuc_counts_long,
-    model$specification,
-    n_chains = n_chains,
-    n_iter = n_iter,
-    seed = seed
-  )
+  fits = list()
+  for (i in seq_len(nrow(nuc_counts))) {
+    fit_i = model$fit(
+      nuc_counts$n_mutations_individual_positions[[i]]
+    )
 
-  nuc_counts$parameters =
-    model$extract_parameters_function(
-      model_fit
-    )[nuc_counts$from_to]
+    fits[[i]] = fit_i
+  }
+
+  nuc_counts$parameters = map(
+    fits,
+    model$extract_parameters_function
+  )
 
   list(
     nuc_counts = nuc_counts,
-    model_fit = model_fit
+    model_fit = fits
   )
 }
 

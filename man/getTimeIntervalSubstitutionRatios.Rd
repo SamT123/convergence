@@ -8,7 +8,8 @@ getTimeIntervalSubstitutionRatios(
   tree_and_sequences,
   tree_info,
   time_boundaries,
-  positions = 1:550
+  positions = 1:550,
+  date_column = "estimated_date_nearest"
 )
 }
 \arguments{

@@ -142,7 +142,6 @@ sampleFromTModel = function(n, parameters, mutations_per_site, pois = T) {
 }
 
 #' Synonymous rate variation models
-#'@export
 models = list(
   normal_model = list(
     specification = normal_model_specification,
@@ -262,9 +261,9 @@ addPValuesToMutationTable = function(
       component_samples = purrr::map(
         components,
         ~ sampling_function(
-          1e4,
-          parameters[[.x[["nt_mutation_class"]]]],
-          .x[["expected_n"]]
+          n = 1e4,
+          parameters = parameters[[.x[["nt_mutation_class"]]]],
+          mutations_per_site = .x[["expected_n"]]
         )
       )
       purrr::reduce(
