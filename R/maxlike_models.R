@@ -27,15 +27,38 @@ poisson_lognormal_nll <- function(params, y) {
 fit_poisson_lognormal <- function(
   y,
   init_mu = log(mean(y) + 0.1),
-  init_sigma = sd(log(y + 0.1))
+  init_sigma = sd(log(y + 0.1)),
+  attempts = 100
 ) {
-  opt <- optim(
-    par = c(init_mu, log(init_sigma)),
-    fn = poisson_lognormal_nll,
-    y = y,
-    method = "BFGS",
-    control = list(maxit = 1000)
-  )
+  fits = list()
+  for (i in seq_len(attempts)) {
+    if (i > 1 & i %% 100 == 1) {
+      message("attempt ", i, " / ", attempts)
+    }
+
+    par_jitter = c(init_mu, log(init_sigma)) *
+      2**(sample(0.5 * c(-1, 1), size = 2, replace = T) * (i - 1) / attempts)
+
+    opt <- try(
+      optim(
+        par = par_jitter,
+        fn = poisson_lognormal_nll,
+        y = y,
+        method = "BFGS",
+        control = list(maxit = 100000)
+      )
+    )
+
+    if (class(opt) != "try-error") {
+      fits = append(
+        fits,
+        list(opt)
+      )
+    }
+  }
+
+  min_nll = which.min(purrr::map_dbl(fits, "value"))
+  opt = fits[[min_nll]]
 
   list(
     mu_hat = opt$par[1],
