@@ -7,11 +7,17 @@
 #' @details The sequence dataframe in `tree_and_sequences` must contain columns `Isolate_unique_identifier` and `dna_sequence`. Other columns containing inforamtion about the sequences can also be present, and wil be preserved. Tip names in the tree in `tree_and_sequences` should correspond to names in the `Isolate_unique_identifier` column.
 #'
 #'@export
-addASRusher = function(tree_and_sequences, aa_ref, nuc_ref) {
+addASRusher = function(
+  tree_and_sequences,
+  aa_ref,
+  nuc_ref,
+  usher_path = NULL
+) {
   tree_and_sequences = remakeTreeAndSequencesWithUsherASR(
     tree_and_sequences,
     aa_ref = aa_ref,
-    nuc_ref = nuc_ref
+    nuc_ref = nuc_ref,
+    usher_path = usher_path
   )
 
   tree_and_sequences_ladderized = ladderizeTreeAndTib(
@@ -317,7 +323,8 @@ reconstructNodeSequences = function(tree_tibble) {
 remakeTreeAndSequencesWithUsherASR = function(
   tree_and_sequences,
   aa_ref,
-  nuc_ref
+  nuc_ref,
+  usher_path = NULL
 ) {
   asr_and_tree = do_ASR_usher(
     tree_and_sequences$tree,
@@ -325,7 +332,8 @@ remakeTreeAndSequencesWithUsherASR = function(
       tree_and_sequences$sequences$dna_sequence,
       tree_and_sequences$sequences$Isolate_unique_identifier
     ),
-    nuc_ref
+    nuc_ref,
+    usher_path = usher_path
   )
 
   tree_and_sequences$tree = asr_and_tree$tree

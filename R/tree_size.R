@@ -182,7 +182,7 @@ addMutationRateModel = function(
     fits[[i]] = fit_i
   }
 
-  nuc_counts$parameters = map(
+  nuc_counts$parameters = purrr::map(
     fits,
     model$extract_parameters_function
   )
