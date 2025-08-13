@@ -28,7 +28,7 @@ fit_poisson_lognormal <- function(
   y,
   init_mu = log(mean(y) + 0.1),
   init_sigma = sd(log(y + 0.1)),
-  attempts = 100
+  attempts = 1000
 ) {
   fits = list()
   for (i in seq_len(attempts)) {
@@ -36,8 +36,18 @@ fit_poisson_lognormal <- function(
       message("attempt ", i, " / ", attempts)
     }
 
+    mu_mask = c(1, 1, -1, -1)
+    sd_mask = c(1, -1, 1, -1)
+
+    # fmt: skip
     par_jitter = c(init_mu, log(init_sigma)) *
-      2**(sample(0.5 * c(-1, 1), size = 2, replace = T) * (i - 1) / attempts)
+      2**(
+          c(
+            mu_mask[((i - 1) %% 4 + 1)],
+            sd_mask[((i - 1) %% 4 + 1)]
+          ) *
+          (i - 1) / attempts
+         )
 
     opt <- try(
       optim(
