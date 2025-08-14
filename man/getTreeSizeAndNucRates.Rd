@@ -7,8 +7,6 @@
 getTreeSizeAndNucRates(
   tree_and_sequences,
   noise_model,
-  n_iter = 2000,
-  n_chains = 3,
   excluded_positions = c(),
   use_fitted_rates = T,
   seed = NULL
@@ -19,15 +17,15 @@ getTreeSizeAndNucRates(
 
 \item{noise_model}{one of the 'noise_models'}
 
-\item{n_iter}{iterations for rstan}
-
-\item{n_chains}{chains for rstan}
-
 \item{excluded_positions}{positions to exclude for synonymous rate variation calculation}
 
 \item{use_fitted_rates}{should the fitted mutation rates be used, rather than simply taking the mean of the observed values?}
 
 \item{seed}{seed for rstan}
+
+\item{n_iter}{iterations for rstan}
+
+\item{n_chains}{chains for rstan}
 }
 \description{
 Get information about a tree required for calculating convergence scores

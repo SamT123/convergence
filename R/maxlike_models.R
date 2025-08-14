@@ -1,87 +1,136 @@
-poisson_lognormal_nll <- function(params, y) {
-  mu <- params[1]
-  sigma <- exp(params[2]) # enforce sigma > 0
-
-  # Marginal probability for each y_i
-  logliks <- sapply(y, function(yi) {
-    f <- function(lambda) {
-      dpois(yi, lambda) * dlnorm(lambda, meanlog = mu, sdlog = sigma)
-      # dpois(yi, lambda) * 2**dnorm(lambda, mean = mu, sd = sigma)
-    }
-    val <- integrate(
-      f,
-      lower = 0,
-      upper = Inf,
-      rel.tol = 1e-10,
-      abs.tol = 0
-    )$value
-    if (val <= 0) {
-      return(-Inf)
-    }
-    log(val)
-  })
-
-  return(-sum(logliks)) # negative log-likelihood
+# ---- utilities ----
+log_sum_exp <- function(a) {
+  # Stable log(sum(exp(a))) for a vector 'a'
+  m <- max(a)
+  m + log(sum(exp(a - m)))
 }
+
+# Core log-likelihood for Poisson-lognormal via Gauss-Hermite (probabilist form)
+# y      : integer vector of counts
+# mu     : mean of log lambda
+# sigma  : sd of log lambda ( > 0 )
+# nodes, weights: from statmod::gauss.quad.prob(n, "normal")
+pln_loglik_gh <- function(y, mu, sigma, nodes, weights) {
+  # For each y_i, integral wrt Z ~ N(0,1): E[ Poi(y_i | exp(mu + sigma Z)) ]
+  # Because weights integrate against the standard normal, we just need dpois.
+  # Do everything in log-space with log-sum-exp.
+  ll_i <- vapply(
+    y,
+    function(yi) {
+      # log pmf at all nodes
+      lpmf_nodes <- dpois(yi, lambda = exp(mu + sigma * nodes), log = TRUE)
+      # log-sum over quadrature nodes: log( sum_k w_k * exp(lpmf_k) )
+      log_sum_exp(log(weights) + lpmf_nodes)
+    },
+    numeric(1)
+  )
+  sum(ll_i)
+}
+
+# Wrapper that 'optim' can use on unconstrained scale for sigma via log-sigma
+# par = c(mu, log_sigma)
+neg_loglik_par <- function(par, y, nodes, weights) {
+  mu <- par[1]
+  sigma <- exp(par[2]) # enforce sigma > 0
+  -pln_loglik_gh(y, mu, sigma, nodes, weights)
+}
+
+# ---- main MLE function ----
+pln_mle <- function(
+  y,
+  n_quad = 100,
+  start = c(mean(log(y + 0.2)), sd(log(y + 0.2))),
+  sigma_lower = 0.01,
+  sigma_upper = 5
+) {
+  if (any(y < 0) || any(y != floor(y))) {
+    stop("y must be nonnegative integers")
+  }
+  if (length(y) == 0) {
+    stop("y is empty")
+  }
+  gh <- statmod::gauss.quad.prob(n_quad, "normal") # nodes/weights for standard normal
+  nodes <- gh$nodes
+  weights <- gh$weights
+
+  start <- c(start[1], log(max(start[2], sigma_lower)))
+
+  opt <- optim(
+    par = start,
+    fn = neg_loglik_par,
+    y = y,
+    nodes = nodes,
+    weights = weights,
+    method = "L-BFGS-B",
+    lower = c(-Inf, log(sigma_lower)),
+    upper = c(Inf, log(sigma_upper)),
+    hessian = TRUE
+  )
+
+  # Extract estimates
+  mu_hat <- opt$par[1]
+  sigma_hat <- exp(opt$par[2])
+  logLik_hat <- -opt$value
+
+  # Standard errors via Hessian (on (mu, log sigma) scale), then delta method for sigma
+  vcov_par <- tryCatch(solve(opt$hessian), error = function(e) {
+    matrix(NA_real_, 2, 2)
+  })
+  se_mu <- sqrt(vcov_par[1, 1])
+  se_logsigma <- sqrt(vcov_par[2, 2])
+  se_sigma <- if (is.finite(se_logsigma)) sigma_hat * se_logsigma else NA_real_
+
+  out <- list(
+    par = c(mu = mu_hat, sigma = sigma_hat),
+    par_scale = c(mu = exp(mu_hat), sigma = log2(exp(sigma_hat))),
+    se = c(mu = se_mu, sigma = se_sigma),
+    vcov_par = vcov_par, # vcov for (mu, log sigma)
+    logLik = logLik_hat,
+    convergence = opt$convergence,
+    message = opt$message,
+    n_quad = n_quad,
+    call = match.call()
+  )
+  class(out) <- "pln_mle"
+  out
+}
+
+print.pln_mle <- function(x, ...) {
+  cat("Poisson–Lognormal MLE (Gauss–Hermite, n_quad =", x$n_quad, ")\n")
+  est <- x$coefficients
+  est_scale <- x$coefficients_scale
+  se <- x$se
+  cat(sprintf("  mu    = % .6f (SE % .6f)\n", est["mu"], se["mu"]))
+  cat(sprintf("  sigma = % .6f (SE % .6f)\n", est["sigma"], se["sigma"]))
+
+  cat(sprintf("  mu_lin    = % .6f\n", est_scale["mu"]))
+  cat(sprintf("  sigma = % .6f\n", est_scale["sigma"]))
+  cat(sprintf(
+    "  logLik = % .3f | convergence code: %s\n",
+    x$logLik,
+    as.character(x$convergence)
+  ))
+  invisible(x)
+}
+
 
 fit_poisson_lognormal <- function(
   y,
-  init_mu = log(mean(y) + 0.1),
-  init_sigma = sd(log(y + 0.1)),
-  attempts = 1000
+  init_mu = log(mean(y) + 0.2),
+  init_sigma = sd(log(y + 0.2))
 ) {
-  fits = list()
-  for (i in seq_len(attempts)) {
-    if (i > 1 & i %% 100 == 1) {
-      message("attempt ", i, " / ", attempts)
-    }
-
-    mu_mask = c(1, 1, -1, -1)
-    sd_mask = c(1, -1, 1, -1)
-
-    # fmt: skip
-    par_jitter = c(init_mu, log(init_sigma)) *
-      2**(
-          c(
-            mu_mask[((i - 1) %% 4 + 1)],
-            sd_mask[((i - 1) %% 4 + 1)]
-          ) *
-          (i - 1) / attempts
-         )
-
-    opt <- try(
-      optim(
-        par = par_jitter,
-        fn = poisson_lognormal_nll,
-        y = y,
-        method = "BFGS",
-        control = list(maxit = 100000)
-      )
-    )
-
-    if (class(opt) != "try-error") {
-      fits = append(
-        fits,
-        list(opt)
-      )
-    }
-  }
-
-  min_nll = which.min(purrr::map_dbl(fits, "value"))
-  opt = fits[[min_nll]]
+  opt = pln_mle(y)
 
   list(
     mu_hat = opt$par[1],
-    sigma_hat = exp(opt$par[2]),
+    sigma_hat = opt$par[2],
 
-    mu_hat_linear = exp(opt$par[1]),
-    sigma_hat_log2 = log2(exp(exp(opt$par[2]))),
+    mu_hat_linear = opt$par_scale[1],
+    sigma_hat_log2 = opt$par_scale[2],
 
-    nll = opt$value,
-    convergence = opt$convergence
+    nll = opt$logLik
   )
 }
-
 
 extractParametersFromMaxLikeNormalModel = function(model_fit) {
   list(

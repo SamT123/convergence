@@ -4,7 +4,7 @@
 \alias{addASRusher}
 \title{Add ancestral state reconstruction to \code{tree_and_sequences}}
 \usage{
-addASRusher(tree_and_sequences, aa_ref, nuc_ref)
+addASRusher(tree_and_sequences, aa_ref, nuc_ref, usher_path = NULL)
 }
 \arguments{
 \item{tree_and_sequences}{list with a sequence dataframe (see details) and a phylogenetic tree}
