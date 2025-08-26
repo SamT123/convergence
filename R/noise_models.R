@@ -250,7 +250,7 @@ addPValuesToMutationTable = function(
   nuc_counts,
   sampling_function
 ) {
-  parameters = setNames(
+  whole_tree_parameters = setNames(
     nuc_counts$parameters,
     nuc_counts$from_to
   )
@@ -260,12 +260,16 @@ addPValuesToMutationTable = function(
     function(components) {
       component_samples = purrr::map(
         components,
-        ~ sampling_function(
-          n = 1e4,
-          parameters = parameters[[.x[["nt_mutation_class"]]]],
-          mutations_per_site = .x[["expected_n"]]
-        )
+        function(component) {
+          params = whole_tree_parameters[[component[["nt_mutation_class"]]]]
+          params[["centrality"]] = component[["expected_n"]]
+          sampling_function(
+            n = 1e4,
+            parameters = params
+          )
+        }
       )
+
       purrr::reduce(
         component_samples,
         \(x, y) x + y

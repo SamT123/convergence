@@ -139,7 +139,11 @@ extractParametersFromMaxLikeNormalModel = function(model_fit) {
   )
 }
 
-sampleFromMaxLikeNormalModel = function(n, parameters, pois = T, ...) {
+sampleFromMaxLikeNormalModel = function(
+  n,
+  parameters,
+  pois = T
+) {
   means = 2**(log2(parameters$centrality) + rnorm(n, 0, parameters$scale))
 
   if (pois) {
