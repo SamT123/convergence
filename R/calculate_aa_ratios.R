@@ -98,9 +98,11 @@ splitFourFoldSynPositionsFromSequenceTable = function(
   ]
 
   sequences_at_four_fold_syn_sites_idx = setNames(
-    apply(sequences_at_four_fold_syn_sites_idx, 2, \(x) {
-      names(sort(table(x)))[[1]]
-    }),
+    apply(
+      sequences_at_four_fold_syn_sites_idx,
+      2,
+      \(x) names(sort(table(x), decreasing = T))[[1]]
+    ),
     colnames(sequences_at_four_fold_syn_sites_idx)
   )
 
