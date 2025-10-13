@@ -1,8 +1,8 @@
 #' Add ancestral state reconstruction to `tree_and_sequences`
 #' @param tree_and_sequences list with a sequence dataframe (see details) and a phylogenetic tree
-#'
 #' @param aa_ref amino acid reference sequence for alignment
 #' @param nuc_ref nucleotide reference sequence for alignment
+#' @param usher_path path to usher binary
 #'
 #' @details The sequence dataframe in `tree_and_sequences` must contain columns `Isolate_unique_identifier` and `dna_sequence`. Other columns containing inforamtion about the sequences can also be present, and wil be preserved. Tip names in the tree in `tree_and_sequences` should correspond to names in the `Isolate_unique_identifier` column.
 #'

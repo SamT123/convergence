@@ -20,6 +20,8 @@ getTimeIntervalSubstitutionRatios(
 \item{time_boundaries}{Boundaries between time intervals. The final interval will have boundaries (last_time_interval, Inf)}
 
 \item{positions}{amino acid positions to analyse}
+
+\item{date_column}{column to use for date filtering}
 }
 \description{
 Title

@@ -95,24 +95,6 @@ pln_mle <- function(
   out
 }
 
-print.pln_mle <- function(x, ...) {
-  cat("Poisson–Lognormal MLE (Gauss–Hermite, n_quad =", x$n_quad, ")\n")
-  est <- x$coefficients
-  est_scale <- x$coefficients_scale
-  se <- x$se
-  cat(sprintf("  mu    = % .6f (SE % .6f)\n", est["mu"], se["mu"]))
-  cat(sprintf("  sigma = % .6f (SE % .6f)\n", est["sigma"], se["sigma"]))
-
-  cat(sprintf("  mu_lin    = % .6f\n", est_scale["mu"]))
-  cat(sprintf("  sigma = % .6f\n", est_scale["sigma"]))
-  cat(sprintf(
-    "  logLik = % .3f | convergence code: %s\n",
-    x$logLik,
-    as.character(x$convergence)
-  ))
-  invisible(x)
-}
-
 
 fit_poisson_lognormal <- function(
   y,

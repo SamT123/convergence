@@ -4,6 +4,7 @@
 #' @param tree_info tree_info from `getTreeSizeAndNucRates`
 #' @param time_boundaries Boundaries between time intervals. The final interval will have boundaries (last_time_interval, Inf)
 #' @param positions amino acid positions to analyse
+#' @param date_column column to use for date filtering
 #'
 #' @export
 getTimeIntervalSubstitutionRatios = function(

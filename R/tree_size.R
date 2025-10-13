@@ -2,8 +2,6 @@
 #'
 #' @param tree_and_sequences a list containing `tree` and `tree_tibble`
 #' @param noise_model one of the 'noise_models'
-#' @param n_iter iterations for rstan
-#' @param n_chains chains for rstan
 #' @param excluded_positions positions to exclude for synonymous rate variation calculation
 #' @param use_fitted_rates should the fitted mutation rates be used, rather than simply taking the mean of the observed values?
 #' @param seed seed for rstan

@@ -12,6 +12,8 @@ addASRusher(tree_and_sequences, aa_ref, nuc_ref, usher_path = NULL)
 \item{aa_ref}{amino acid reference sequence for alignment}
 
 \item{nuc_ref}{nucleotide reference sequence for alignment}
+
+\item{usher_path}{path to usher binary}
 }
 \description{
 Add ancestral state reconstruction to \code{tree_and_sequences}

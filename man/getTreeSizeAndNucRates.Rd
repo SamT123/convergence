@@ -22,10 +22,6 @@ getTreeSizeAndNucRates(
 \item{use_fitted_rates}{should the fitted mutation rates be used, rather than simply taking the mean of the observed values?}
 
 \item{seed}{seed for rstan}
-
-\item{n_iter}{iterations for rstan}
-
-\item{n_chains}{chains for rstan}
 }
 \description{
 Get information about a tree required for calculating convergence scores
