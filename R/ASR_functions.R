@@ -31,6 +31,11 @@ addASRusher = function(
   tree_and_sequences = addAaSequence(tree_and_sequences, aa_ref)
   tree_and_sequences = addSynonymousInfo(tree_and_sequences)
 
+  tree_and_sequences$tree_tibble$num_descendant_tips = c(
+    rep(1, ape::Ntip(tree_and_sequences$tree)),
+    castor::count_tips_per_node(tree_and_sequences$tree)
+  )
+
   tree_and_sequences
 }
 
