@@ -1,3 +1,38 @@
+#' Make tree_and_sequences object
+#'
+#' @param tree phylo object
+#' @param sequences sequences dataframe
+#'
+#' @details The sequences dataframe must contain columns `Isolate_unique_identifier` and `dna_sequence`. Other columns containing inforamtion about the sequences can also be present. Tip names in the tree in should correspond to the `Isolate_unique_identifier` column of sequences.
+#'
+#'@export
+makeTreeAndSequences = function(
+  tree,
+  sequences
+) {
+  stopifnot("phylo" %in% class(tree))
+  stopifnot(all(c("Isolate_unique_identifier", "dna_sequence") %in% names(sequences))) # fmt: skip
+
+  tree$node.label = paste0(
+    "internalnode_",
+    seq_len(ape::Nnode(tree))
+  )
+
+  tree_tibble = treeio::as_tibble(tree)
+
+  tree_tibble = dplyr::left_join(
+    tree_tibble,
+    sequences,
+    by = c("label" = "Isolate_unique_identifier")
+  )
+
+  list(
+    tree = tree,
+    sequences = sequences,
+    tree_tibble = tree_tibble
+  )
+}
+
 #' Add ancestral state reconstruction to `tree_and_sequences`
 #' @param tree_and_sequences list with a sequence dataframe (see details) and a phylogenetic tree
 #' @param aa_ref amino acid reference sequence for alignment
@@ -13,20 +48,17 @@ addASRusher = function(
   nuc_ref,
   usher_path = NULL
 ) {
-  tree_and_sequences = remakeTreeAndSequencesWithUsherASR(
+  tree_and_sequences = addUsherMutations(
     tree_and_sequences,
     aa_ref = aa_ref,
     nuc_ref = nuc_ref,
     usher_path = usher_path
   )
 
-  tree_and_sequences_ladderized = ladderizeTreeAndTib(
-    tree_and_sequences$tree,
-    tree_and_sequences$tree_tibble
+  tree_and_sequences = processUsherMutations(
+    tree_and_sequences,
+    aa_ref = aa_ref
   )
-
-  tree_and_sequences$tree = tree_and_sequences_ladderized$tree
-  tree_and_sequences$tree_tibble = tree_and_sequences_ladderized$tib
 
   tree_and_sequences = addAaSequence(tree_and_sequences, aa_ref)
   tree_and_sequences = addSynonymousInfo(tree_and_sequences)
@@ -88,7 +120,102 @@ addAaSequence = function(tree_and_sequences, aa_ref) {
   tree_and_sequences
 }
 
-do_ASR_usher = function(
+getNodeMatchData = function(tree) {
+  data = list() # first descendant tip, num descendants
+
+  for (i in seq_len(ape::Ntip(tree))) {
+    data[[length(data) + 1]] = list(
+      nd_tip = 0,
+      nd_node = 0,
+      desc_hash = tree$tip.label[[i]],
+      node_match = tree$tip.label[[i]]
+    )
+  }
+
+  for (i in seq_len(ape::Nnode(tree))) {
+    subtree = castor::get_subtree_at_node(tree, i)$subtree
+    dists = castor::get_all_distances_to_root(subtree, as_edge_count = T)[
+      (1):(ape::Ntip(subtree))
+    ]
+    sorted_desc_tips = sort(subtree$tip.label[dists == min(dists)])
+    data_i = list(
+      nd_tip = ape::Ntip(subtree),
+      nd_node = ape::Nnode(subtree),
+      desc_hash = sorted_desc_tips[[1]]
+    )
+
+    # fmt: skip
+    data_i[["node_match"]] = paste0(
+      "n_tip = ", data_i[["nd_tip"]],
+      " | n_node = ", data_i[["nd_node"]],
+      " | first_desc = ", data_i[["desc_hash"]]
+    )
+
+    data[[length(data) + 1]] = data_i
+  }
+
+  data
+}
+
+matchTreeTibbles = function(tt1, tt2) {
+  t1 = treeio::as.phylo(tt1, label = "label")
+  t2 = treeio::as.phylo(tt2, label = "label")
+
+  node_match_1_l = getNodeMatchData(t1)
+  node_match_1 = map_chr(node_match_1_l, "node_match")
+
+  node_match_2_l = getNodeMatchData(t2)
+  node_match_2 = map_chr(node_match_2_l, "node_match")
+
+  stopifnot(!any(duplicated(node_match_1)))
+  stopifnot(!any(duplicated(node_match_2)))
+  stopifnot(all(sort(node_match_1) == sort(node_match_1)))
+
+  match(node_match_1, node_match_2)
+}
+
+addUsherMutations = function(
+  tree_and_sequences,
+  aa_ref,
+  nuc_ref,
+  usher_path = NULL
+) {
+  asr_and_tree = getUsherMutations(
+    tree_and_sequences$tree,
+    setNames(
+      tree_and_sequences$sequences$dna_sequence,
+      tree_and_sequences$sequences$Isolate_unique_identifier
+    ),
+    nuc_ref,
+    usher_path = usher_path
+  )
+
+  asr_and_tree$tree_tibble = treeio::as_tibble(asr_and_tree$tree)
+  asr_and_tree$tree_tibble = left_join(
+    asr_and_tree$tree_tibble,
+    asr_and_tree$asr,
+    by = c("label" = "node_id")
+  )
+
+  tibble_match = matchTreeTibbles(
+    tree_and_sequences$tree_tibble,
+    asr_and_tree$tree_tibble
+  )
+
+  tree_and_sequences_joined = tree_and_sequences
+
+  for (cn in c("aa_mutations", "nt_mutations", "codon_changes")) {
+    tree_and_sequences_joined$tree_tibble = add_column(
+      tree_and_sequences_joined$tree_tibble,
+      asr_and_tree$tree_tibble[tibble_match, cn]
+    )
+  }
+
+  tree_and_sequences_joined
+}
+
+
+getUsherMutations = function(
   tree,
   sequences,
   nuc_ref,
@@ -104,7 +231,7 @@ do_ASR_usher = function(
     "/"
   )
   dir.create(dir)
-  on.exit(unlink(dir, recursive = T))
+  # on.exit(unlink(dir, recursive = T))
 
   castor::write_tree(
     tree = tree,
@@ -180,6 +307,110 @@ do_ASR_usher = function(
     asr = readr::read_tsv(paste0(dir, "/out.tsv"))
   )
 }
+
+
+processUsherMutations = function(tree_and_sequences, aa_ref) {
+  tree_and_sequences$tree_tibble$nt_mutations =
+    tree_and_sequences$tree_tibble$nt_mutations %>%
+    stringr::str_split(";|,") %>%
+    purrr::map(~ .x[!is.na(.x)])
+
+  tree_and_sequences$tree_tibble$nt_positions = purrr::map(
+    tree_and_sequences$tree_tibble$nt_mutations,
+    ~ as.integer(stringr::str_sub(.x, 2, -2))
+  )
+
+  tree_and_sequences$tree_tibble = reconstructNodeSequences(
+    tree_and_sequences$tree_tibble
+  )
+
+  tree_and_sequences$tree_tibble = tree_and_sequences$tree_tibble %>%
+    mutate(
+      reconstructed_aa_sequence = seqUtils::translate(
+        reconstructed_dna_sequence,
+        aa_ref
+      )
+    )
+
+  tree_and_sequences$tree_tibble$codon_changes = purrr::pmap(
+    list(
+      positions = tree_and_sequences$tree_tibble$nt_positions,
+      seq = tree_and_sequences$tree_tibble$reconstructed_dna_sequence,
+      parental_seq = tree_and_sequences$tree_tibble$reconstructed_dna_sequence[
+        tree_and_sequences$tree_tibble$parent
+      ]
+    ),
+    function(positions, seq, parental_seq) {
+      if (length(positions) == 0) {
+        return(character())
+      }
+      aa_positions = ceiling(positions / 3)
+      paste0(
+        stringr::str_sub(
+          parental_seq,
+          3 * (aa_positions - 1) + 1,
+          3 * aa_positions
+        ),
+        ">",
+        stringr::str_sub(seq, 3 * (aa_positions - 1) + 1, 3 * aa_positions)
+      )
+    }
+  )
+  tree_and_sequences$tree_tibble$aa_mutations = purrr::map2(
+    tree_and_sequences$tree_tibble$codon_changes,
+    tree_and_sequences$tree_tibble$nt_positions,
+    function(codon, pos) {
+      from = Biostrings::GENETIC_CODE[substr(codon, 1, 3)]
+      from[is.na(from)] = "X"
+      to = Biostrings::GENETIC_CODE[substr(codon, 5, 7)]
+      to[is.na(to)] = "X"
+
+      paste0(
+        from,
+        ceiling(pos / 3),
+        to
+      )
+    }
+  )
+
+  root_row = which(
+    tree_and_sequences$tree_tibble$parent == tree_and_sequences$tree_tibble$node
+  )
+
+  tree_and_sequences$tree_tibble$nt_mutations[root_row] = list(NULL)
+  tree_and_sequences$tree_tibble$nt_positions[root_row] = list(NULL)
+  tree_and_sequences$tree_tibble$aa_mutations[root_row] = list(NULL)
+  tree_and_sequences$tree_tibble$codon_changes[root_row] = list(NULL)
+
+  tree_and_sequences$tree_tibble$nt_mutations_is_single = purrr::map(
+    tree_and_sequences$tree_tibble$nt_positions,
+    function(positions) {
+      aa_positions = ceiling(positions / 3)
+      !(duplicated(aa_positions, fromLast = F) |
+        duplicated(aa_positions, fromLast = T))
+    }
+  )
+
+  tree_and_sequences$tree_tibble$nt_mutations_is_syn = purrr::map(
+    tree_and_sequences$tree_tibble$codon_changes,
+    function(codon_changes) {
+      froms = stringr::str_sub(codon_changes, 1, 3)
+      tos = stringr::str_sub(codon_changes, -3, -1)
+
+      froms = Biostrings::GENETIC_CODE[froms]
+      froms[is.na(froms)] = "X"
+      tos = Biostrings::GENETIC_CODE[tos]
+      tos[is.na(tos)] = "X"
+
+      froms == tos
+    }
+  )
+
+  tree_and_sequences$tree_tibble = as_tibble(tree_and_sequences$tree_tibble)
+
+  tree_and_sequences
+}
+
 
 add_to_PATH = function(path) {
   old_path <- Sys.getenv("PATH")
@@ -322,139 +553,4 @@ reconstructNodeSequences = function(tree_tibble) {
   tree_tibble$reconstructed_dna_sequence = reconstructed_dna_sequences
 
   tree_tibble
-}
-
-
-remakeTreeAndSequencesWithUsherASR = function(
-  tree_and_sequences,
-  aa_ref,
-  nuc_ref,
-  usher_path = NULL
-) {
-  asr_and_tree = do_ASR_usher(
-    tree_and_sequences$tree,
-    setNames(
-      tree_and_sequences$sequences$dna_sequence,
-      tree_and_sequences$sequences$Isolate_unique_identifier
-    ),
-    nuc_ref,
-    usher_path = usher_path
-  )
-
-  tree_and_sequences$tree = asr_and_tree$tree
-
-  tree_and_sequences$tree_tibble = treeio::as_tibble(tree_and_sequences$tree)
-  tree_and_sequences$tree_tibble = dplyr::left_join(
-    tree_and_sequences$tree_tibble,
-    tree_and_sequences$sequences,
-    by = c("label" = "Isolate_unique_identifier")
-  )
-
-  tree_and_sequences$tree_tibble = cbind(
-    tree_and_sequences$tree_tibble,
-    asr_and_tree$asr[
-      match(tree_and_sequences$tree_tibble$label, asr_and_tree$asr$node_id),
-      -1
-    ]
-  )
-
-  tree_and_sequences$tree_tibble$nt_mutations =
-    tree_and_sequences$tree_tibble$nt_mutations %>%
-    stringr::str_split(";|,") %>%
-    purrr::map(~ .x[!is.na(.x)])
-
-  tree_and_sequences$tree_tibble$nt_positions = purrr::map(
-    tree_and_sequences$tree_tibble$nt_mutations,
-    ~ as.integer(stringr::str_sub(.x, 2, -2))
-  )
-
-  tree_and_sequences$tree_tibble = reconstructNodeSequences(
-    tree_and_sequences$tree_tibble
-  )
-
-  tree_and_sequences$tree_tibble = tree_and_sequences$tree_tibble %>%
-    mutate(
-      reconstructed_aa_sequence = seqUtils::translate(
-        reconstructed_dna_sequence,
-        aa_ref
-      )
-    )
-
-  tree_and_sequences$tree_tibble$codon_changes = purrr::pmap(
-    list(
-      positions = tree_and_sequences$tree_tibble$nt_positions,
-      seq = tree_and_sequences$tree_tibble$reconstructed_dna_sequence,
-      parental_seq = tree_and_sequences$tree_tibble$reconstructed_dna_sequence[
-        tree_and_sequences$tree_tibble$parent
-      ]
-    ),
-    function(positions, seq, parental_seq) {
-      if (length(positions) == 0) {
-        return(character())
-      }
-      aa_positions = ceiling(positions / 3)
-      paste0(
-        stringr::str_sub(
-          parental_seq,
-          3 * (aa_positions - 1) + 1,
-          3 * aa_positions
-        ),
-        ">",
-        stringr::str_sub(seq, 3 * (aa_positions - 1) + 1, 3 * aa_positions)
-      )
-    }
-  )
-  tree_and_sequences$tree_tibble$aa_mutations = purrr::map2(
-    tree_and_sequences$tree_tibble$codon_changes,
-    tree_and_sequences$tree_tibble$nt_positions,
-    function(codon, pos) {
-      from = Biostrings::GENETIC_CODE[substr(codon, 1, 3)]
-      from[is.na(from)] = "X"
-      to = Biostrings::GENETIC_CODE[substr(codon, 5, 7)]
-      to[is.na(to)] = "X"
-
-      paste0(
-        from,
-        ceiling(pos / 3),
-        to
-      )
-    }
-  )
-
-  parent_row = which(
-    tree_and_sequences$tree_tibble$parent == tree_and_sequences$tree_tibble$node
-  )
-
-  tree_and_sequences$tree_tibble$nt_mutations[parent_row] = list(NULL)
-  tree_and_sequences$tree_tibble$nt_positions[parent_row] = list(NULL)
-  tree_and_sequences$tree_tibble$aa_mutations[parent_row] = list(NULL)
-  tree_and_sequences$tree_tibble$codon_changes[parent_row] = list(NULL)
-
-  tree_and_sequences$tree_tibble$nt_mutations_is_single = purrr::map(
-    tree_and_sequences$tree_tibble$nt_positions,
-    function(positions) {
-      aa_positions = ceiling(positions / 3)
-      !(duplicated(aa_positions, fromLast = F) |
-        duplicated(aa_positions, fromLast = T))
-    }
-  )
-
-  tree_and_sequences$tree_tibble$nt_mutations_is_syn = purrr::map(
-    tree_and_sequences$tree_tibble$codon_changes,
-    function(codon_changes) {
-      froms = stringr::str_sub(codon_changes, 1, 3)
-      tos = stringr::str_sub(codon_changes, -3, -1)
-
-      froms = Biostrings::GENETIC_CODE[froms]
-      froms[is.na(froms)] = "X"
-      tos = Biostrings::GENETIC_CODE[tos]
-      tos[is.na(tos)] = "X"
-
-      froms == tos
-    }
-  )
-
-  tree_and_sequences$tree_tibble = as_tibble(tree_and_sequences$tree_tibble)
-
-  tree_and_sequences
 }

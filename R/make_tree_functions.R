@@ -2,6 +2,7 @@
 #'
 #' @param sequences named character vector of DNA/RNA sequences
 #' @param tree_path path to save tree
+#' @param multifurcating is the tree allowed to contain multifucations? default TRUE.
 #' @param starting_tree_path path to starting tree containing a subset of the sequences
 #' @param freeze_starting_tree should the relationships in the starting tree be preserved?
 #' @param cmaple_path path to your cmaple installation
@@ -11,6 +12,7 @@
 make_cmaple_tree = function(
   sequences,
   tree_path,
+  multifurcating = T,
   starting_tree_path = NULL,
   freeze_starting_tree = F,
   cmaple_path = NULL,
@@ -51,11 +53,19 @@ make_cmaple_tree = function(
     "-aln", fasta_path
   )
 
+  if (multifurcating) {
+    # fmt: skip
+    cmaple_call = c(
+      cmaple_call,
+      "--out-mul-tree"
+    )
+  }
+
   if (!is.null(starting_tree_path)) {
     # fmt: skip
     cmaple_call = c(
       cmaple_call,
-      " -t ", starting_tree_path
+      "-t ", starting_tree_path
     )
   }
 

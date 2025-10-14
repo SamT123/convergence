@@ -7,6 +7,7 @@
 make_cmaple_tree(
   sequences,
   tree_path,
+  multifurcating = T,
   starting_tree_path = NULL,
   freeze_starting_tree = F,
   cmaple_path = NULL,
@@ -17,6 +18,8 @@ make_cmaple_tree(
 \item{sequences}{named character vector of DNA/RNA sequences}
 
 \item{tree_path}{path to save tree}
+
+\item{multifurcating}{is the tree allowed to contain multifucations? default TRUE.}
 
 \item{starting_tree_path}{path to starting tree containing a subset of the sequences}
 

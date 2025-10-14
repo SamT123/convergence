@@ -1,39 +1,11 @@
-#' Add estiamted node dates to tree_tibble
+#' Add estimated node dates to tree_tibble
 #'
 #' @param tree_and_sequences a list containing `tree` and `tree_tibble`
 #'
 #' Two types of node date are added: the collection date of the nearest tip, and the collection date of the nearest _descendant_ tip.
-#'
-#' To do:
-#' - Node dating with TimeTree and/or Chronumental
-#' - Earliest date of any descendant tip (but this is very sensitive to misplaced sequences)
-#'
 #'@export
-addEstimatedNodeDates = function(tree_and_sequences) {
-  name_to_hash = setNames(
-    openssl::md4(tree_and_sequences$tree$tip.label),
-    tree_and_sequences$tree$tip.label
-  )
-
-  hash_to_name = setNames(
-    names(name_to_hash),
-    unname(name_to_hash)
-  )
-
-  tree_and_sequences$tree_tibble$label = name_to_hash[
-    tree_and_sequences$tree_tibble$label
-  ]
-
-  tree_and_sequences$tree$tip.label = name_to_hash[
-    tree_and_sequences$tree$tip.label
-  ]
-
-  tree_and_sequences$tree$node.label = 1:ape::Nnode(tree_and_sequences$tree)
-  tree_and_sequences$tree_tibble$label[
-    ape::Ntip(tree_and_sequences$tree) + (1:ape::Nnode(tree_and_sequences$tree))
-  ] =
-    1:ape::Nnode(tree_and_sequences$tree)
-
+addNearestDescendantNodeDates = function(tree_and_sequences) {
+  # clean collection dates
   tree_and_sequences$tree_tibble$Collection_date_clean = tree_and_sequences$tree_tibble$Collection_date
 
   tree_and_sequences$tree_tibble$Collection_date_clean[
@@ -98,13 +70,141 @@ addEstimatedNodeDates = function(tree_and_sequences) {
   tree_and_sequences$tree_tibble$estimated_date_nearest_desc =
     node_dates_from_nearest_desc_tips
 
-  tree_and_sequences$tree_tibble$label = hash_to_name[
-    tree_and_sequences$tree_tibble$label
-  ]
+  tree_and_sequences
+}
 
-  tree_and_sequences$tree$tip.label = hash_to_name[
-    tree_and_sequences$tree$tip.label
-  ]
+#' Convert tree_and_sequences to a timetree using Chronumental
+#'
+#' @param tree_and_sequences a list containing `tree` and `tree_tibble`
+#' @param reference_strain name of the strain to use as date reference (t=0). NA -> earliest date
+#' @param chronumental_path path to chronumental binary
+#' @param n_steps number of chronumental iterations
+#' @param genome_size nt sequence length when branch lengths are in units of substitutions/site
+#'
+#' Two types of node date are added: the collection date of the nearest tip, and the collection date of the nearest _descendant_ tip.
+#'@export
+toChronumentalTree = function(
+  tree_and_sequences,
+  reference_strain = NA,
+  chronumental_path = NULL,
+  n_steps = 10000,
+  genome_size = NA
+) {
+  if ("nt_mutations" %in% colnames(tree_and_sequences$tree_tibble)) {
+    stop(
+      "toChronumentalTree should be run BEFORE addASRusher, as toChronumentalTree changes the tree rooting"
+    )
+  }
+
+  tree = treeio::as.phylo(
+    tree_and_sequences$tree_tibble,
+    label = "label",
+    branch.length = "branch.length"
+  )
+
+  dates = tree_and_sequences$sequences %>%
+    select(Isolate_unique_identifier, Collection_date) %>%
+    rename(strain = Isolate_unique_identifier, date = Collection_date)
+
+  if (is.na(reference_strain)) {
+    reference_strain = dates %>%
+      arrange(dates) %>%
+      slice(1) %>%
+      pluck("Isolate_unique_identifier")
+  }
+
+  tree_and_dates = makeChronumentalTree(
+    tree,
+    dates,
+    reference_strain,
+    chronumental_path,
+    n_steps,
+    genome_size
+  )
+
+  tree_and_sequences$original_tree = tree_and_sequences$tree
+  tree_and_sequences$original_tree_tibble = tree_and_sequences$tree_tibble
+
+  tree_and_sequences$tree = ape::ladderize(tree_and_dates$tree)
+  tree_and_sequences$tree_tibble = tree_and_sequences$tree %>%
+    treeio::as_tibble() %>%
+    left_join(
+      select(
+        tree_and_sequences$original_tree_tibble[
+          seq_len(ape::Ntip(tree_and_sequences$original_tree)),
+        ],
+        -parent,
+        -node,
+        -branch.length
+      ),
+      by = "label"
+    ) %>%
+    left_join(
+      tree_and_dates$dates,
+      by = c("label" = "strain")
+    )
 
   tree_and_sequences
+}
+
+
+makeChronumentalTree = function(
+  tree,
+  dates,
+  reference_strain,
+  chronumental_path,
+  n_steps = 10000,
+  genome_size
+) {
+  if (!is.null(chronumental_path)) {
+    convergence::addASRusher(chronumental_path)
+  }
+
+  ### write tree --------------------
+  tree_file = fs::file_temp(ext = ".nwk")
+  castor::write_tree(
+    tree,
+    file = tree_file
+  )
+
+  ### write dates --------------------
+  dates_file = fs::file_temp(ext = ".csv")
+  readr::write_csv(
+    dates,
+    file = dates_file
+  )
+
+  ### outfiles --------------------
+  tree_out_file = fs::file_temp(ext = ".nwk")
+  dates_out_file = fs::file_temp(ext = ".csv")
+
+  # fmt: skip
+  chronumental_call = c(
+    "chronumental",
+    "--tree", tree_file,
+    "--dates", dates_file,
+    "--tree_out", tree_out_file,
+    "--dates_out", dates_out_file,
+    "--reference_node", paste0("'", reference_strain, "'"),
+    "--steps", n_steps
+)
+
+  if (!is.na(genome_size)) {
+    chronumental_call = c(
+      chronumental_call,
+      "--treat_mutation_units_as_normalised_to_genome_size",
+      genome_size
+    )
+  }
+
+  system(paste(chronumental_call, collapse = " "))
+
+  tree_out = castor::read_tree(file = tree_out_file)
+  dates_out = readr::read_tsv(dates_out_file)
+  dates_out$predicted_date = lubridate::as_date(dates_out$predicted_date)
+
+  list(
+    tree = tree_out,
+    dates = dates_out
+  )
 }
