@@ -231,7 +231,7 @@ getUsherMutations = function(
     "/"
   )
   dir.create(dir)
-  # on.exit(unlink(dir, recursive = T))
+  on.exit(unlink(dir, recursive = T))
 
   castor::write_tree(
     tree = tree,
