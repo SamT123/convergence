@@ -169,3 +169,108 @@ getConsensus = function(sequences) {
     } %>%
     paste(collapse = "")
 }
+
+#' Find branch with mutations
+#'
+#' Finds the branch where all of the target_aa_substitutions and target_nt_mutations are present, and at leaast occurs on the branch. Errors if the number of such branches is not exactly one.
+#'
+#' @param tree_tibble tree_tibble
+#' @param target_aa_substitutions aa substitutions which the branch should have
+#' @param target_nt_mutations nt mutations which the branch should have
+#'
+#' @export
+findBranch = function(
+  tree_tibble,
+  target_aa_substitutions,
+  target_nt_mutations
+) {
+  possible_ancestors = tree_tibble %>%
+    as_tibble()
+
+  # must have specified aa substitutions
+  for (s in target_aa_substitutions) {
+    at = as.integer(stringr::str_sub(s, 1, -2))
+    to = stringr::str_sub(s, -1, -1)
+    possible_ancestors = filter(
+      possible_ancestors,
+      stringr::str_sub(reconstructed_aa_sequence, at, at) == to
+    )
+  }
+
+  # must have specified nt mutations
+  for (t in target_nt_mutations) {
+    at = as.integer(stringr::str_sub(t, 1, -2))
+    to = stringr::str_sub(t, -1, -1)
+    possible_ancestors = filter(
+      possible_ancestors,
+      stringr::str_sub(reconstructed_dna_sequence, at, at) == to
+    )
+  }
+
+  # one of the specified nt mutations or aa substitutions must have occurred on the branch
+
+  possible_ancestors = filter(
+    possible_ancestors,
+    map_lgl(
+      aa_mutations,
+      ~ any(target_aa_substitutions %in% stringr::str_sub(.x, 2))
+    ) |
+      map_lgl(
+        nt_mutations,
+        ~ any(target_nt_mutations %in% stringr::str_sub(.x, 2))
+      )
+  )
+
+  if (nrow(possible_ancestors) == 0) {
+    stop("no branches found")
+  } else if (nrow(possible_ancestors) > 1) {
+    stop("more than one branch found")
+  }
+
+  possible_ancestors$node[[1]]
+}
+
+#' Trim tree and sequences to descendants of a branch
+#'
+#' @param tree_and_sequences tree_and_sequences list
+#' @param branch branch to keep descendants of
+#'
+#' @export
+trimTreeAndSequences = function(
+  tree_and_sequences,
+  branch
+) {
+  treedata = tidytree::as.treedata(
+    tree_and_sequences$tree_tibble,
+    label = "label"
+  )
+
+  subset_treedata = keep.tip(
+    treedata,
+    treeio::offspring(
+      treedata,
+      branch,
+      type = "tips"
+    )
+  )
+
+  subset_tree_and_sequences = list(
+    tree = subset_treedata@phylo,
+    tree_tibble = tidytree::as_tibble(subset_treedata),
+    sequences = filter(
+      tree_and_sequences$sequences,
+      Isolate_unique_identifier %in% subset_treedata@phylo$tip.label
+    )
+  )
+
+  lad = ladderizeTreeAndTib(
+    subset_tree_and_sequences$tree,
+    subset_tree_and_sequences$tree_tibble
+  )
+
+  list(
+    tree = lad$tree,
+    tree_tibble = lad$tib,
+    sequences = subset_tree_and_sequences$sequences
+  )
+}

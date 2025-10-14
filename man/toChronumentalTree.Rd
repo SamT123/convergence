@@ -6,7 +6,7 @@
 \usage{
 toChronumentalTree(
   tree_and_sequences,
-  reference_strain,
+  reference_strain = NA,
   chronumental_path = NULL,
   n_steps = 10000,
   genome_size = NA
@@ -15,7 +15,7 @@ toChronumentalTree(
 \arguments{
 \item{tree_and_sequences}{a list containing \code{tree} and \code{tree_tibble}}
 
-\item{reference_strain}{name of the strain to use as date reference (t=0)}
+\item{reference_strain}{name of the strain to use as date reference (t=0). NA -> earliest date}
 
 \item{chronumental_path}{path to chronumental binary}
 

@@ -12,6 +12,8 @@
 #' @importFrom stats rpois
 #' @importFrom stats sd
 #' @importFrom stats setNames
+#' @importFrom tidytree as_tibble
+#' @importFrom tidytree as.treedata
 ## usethis namespace: end
 #' @import dplyr
 #' @import magrittr

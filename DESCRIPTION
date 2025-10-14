@@ -28,4 +28,5 @@ Imports:
     stringr,
     tibble,
     tidyr,
+    tidytree,
     treeio
