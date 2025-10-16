@@ -4,7 +4,12 @@
 \alias{findBranch}
 \title{Find branch with mutations}
 \usage{
-findBranch(tree_tibble, target_aa_substitutions, target_nt_mutations)
+findBranch(
+  tree_tibble,
+  target_aa_substitutions,
+  target_nt_mutations,
+  allow_ambiguous = F
+)
 }
 \arguments{
 \item{tree_tibble}{tree_tibble}

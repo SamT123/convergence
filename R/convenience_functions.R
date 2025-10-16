@@ -252,7 +252,7 @@ trimTreeAndSequences = function(
   tree_and_sequences,
   branch
 ) {
-  treedata = tidytree::as.treedata(
+  treedata = treeio::as.treedata(
     tree_and_sequences$tree_tibble,
     label = "label"
   )
@@ -268,7 +268,7 @@ trimTreeAndSequences = function(
 
   subset_tree_and_sequences = list(
     tree = subset_treedata@phylo,
-    tree_tibble = tidytree::as_tibble(subset_treedata),
+    tree_tibble = treeio::as_tibble(subset_treedata),
     sequences = filter(
       tree_and_sequences$sequences,
       Isolate_unique_identifier %in% subset_treedata@phylo$tip.label
