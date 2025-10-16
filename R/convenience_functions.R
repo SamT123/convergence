@@ -182,7 +182,8 @@ getConsensus = function(sequences) {
 findBranch = function(
   tree_tibble,
   target_aa_substitutions,
-  target_nt_mutations
+  target_nt_mutations,
+  allow_ambiguous = F
 ) {
   possible_ancestors = tree_tibble %>%
     as_tibble()
@@ -224,7 +225,18 @@ findBranch = function(
   if (nrow(possible_ancestors) == 0) {
     stop("no branches found")
   } else if (nrow(possible_ancestors) > 1) {
-    stop("more than one branch found")
+    if (!allow_ambiguous) {
+      stop("more than one branch found")
+    }
+
+    possible_ancestors = arrange(possible_ancestors, -num_descendant_tips)
+    message(
+      "more than one branch found. returning branch with ",
+      possible_ancestors$num_descendant_tips[[1]],
+      " descendants. next branch has ",
+      possible_ancestors$num_descendant_tips[[2]],
+      " descendants."
+    )
   }
 
   possible_ancestors$node[[1]]
