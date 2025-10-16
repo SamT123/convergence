@@ -157,7 +157,7 @@ makeChronumentalTree = function(
   genome_size
 ) {
   if (!is.null(chronumental_path)) {
-    convergence::addASRusher(chronumental_path)
+    add_to_PATH(chronumental_path)
   }
 
   ### write tree --------------------
