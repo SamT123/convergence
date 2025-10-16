@@ -211,11 +211,11 @@ findBranch = function(
 
   possible_ancestors = filter(
     possible_ancestors,
-    map_lgl(
+    purrr::map_lgl(
       aa_mutations,
       ~ any(target_aa_substitutions %in% stringr::str_sub(.x, 2))
     ) |
-      map_lgl(
+      purrr::map_lgl(
         nt_mutations,
         ~ any(target_nt_mutations %in% stringr::str_sub(.x, 2))
       )
@@ -245,7 +245,7 @@ trimTreeAndSequences = function(
     label = "label"
   )
 
-  subset_treedata = keep.tip(
+  subset_treedata = tidytree::keep.tip(
     treedata,
     treeio::offspring(
       treedata,
