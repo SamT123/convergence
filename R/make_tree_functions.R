@@ -96,7 +96,7 @@ make_cmaple_tree = function(
   system(paste0("mv ", fasta_path, ".log ", tree_path, ".log"))
 
   tree = castor::read_tree(file = tree_path)
-  ladderizeAndMaybeRoot(tree, out_sequence)
+  tree = ladderizeAndMaybeRoot(tree, out_sequence)
   castor::write_tree(tree, tree_path)
 
   tree_path
