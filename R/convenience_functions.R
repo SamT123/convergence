@@ -212,7 +212,7 @@ findBranch = function(
   possible_ancestors = filter(
     possible_ancestors,
     purrr::map_lgl(
-      aa_mutations,
+      aa_mutations_nonsyn,
       ~ any(target_aa_substitutions %in% stringr::str_sub(.x, 2))
     ) |
       purrr::map_lgl(
