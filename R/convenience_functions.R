@@ -177,6 +177,7 @@ getConsensus = function(sequences) {
 #' @param tree_tibble tree_tibble
 #' @param target_aa_substitutions aa substitutions which the branch should have
 #' @param target_nt_mutations nt mutations which the branch should have
+#' @param allow_ambiguous in cases where the aa and nt specification matches multiple branches, should an error be thrown (default), or should the branch with the largest number of descendant tips be used?
 #'
 #' @export
 findBranch = function(
@@ -267,7 +268,7 @@ trimTreeAndSequences = function(
   )
 
   subset_tree_and_sequences = list(
-    tree = subset_treedata@phylo,
+    tree = treeio::as.phylo(treeio::as_tibble(subset_treedata)),
     tree_tibble = treeio::as_tibble(subset_treedata),
     sequences = filter(
       tree_and_sequences$sequences,
