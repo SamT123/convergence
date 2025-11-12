@@ -207,7 +207,7 @@ addUsherMutations = function(
   tree_and_sequences_joined = tree_and_sequences
 
   for (cn in c("aa_mutations", "nt_mutations", "codon_changes")) {
-    tree_and_sequences_joined$tree_tibble = add_column(
+    tree_and_sequences_joined$tree_tibble = tibble::add_column(
       tree_and_sequences_joined$tree_tibble,
       asr_and_tree$tree_tibble[tibble_match, cn]
     )
@@ -409,7 +409,9 @@ processUsherMutations = function(tree_and_sequences, aa_ref) {
     }
   )
 
-  tree_and_sequences$tree_tibble = as_tibble(tree_and_sequences$tree_tibble)
+  tree_and_sequences$tree_tibble = tibble::as_tibble(
+    tree_and_sequences$tree_tibble
+  )
 
   tree_and_sequences
 }
@@ -510,7 +512,7 @@ reconstructNodeSequences = function(tree_tibble) {
 
   random_tip = sample(
     filter(
-      as_tibble(tree_tibble),
+      tibble::as_tibble(tree_tibble),
       !node %in% parent,
       stringr::str_count(dna_sequence, "N") ==
         min(stringr::str_count(dna_sequence, "N"), na.rm = T)
@@ -522,7 +524,7 @@ reconstructNodeSequences = function(tree_tibble) {
   nts_to_root = rev(unlist(nts_to_root))
 
   root_sequence = applySubstitutions(
-    filter(as_tibble(tree_tibble), node == random_tip)$dna_sequence,
+    filter(tibble::as_tibble(tree_tibble), node == random_tip)$dna_sequence,
     nts_to_root,
     backwards = T
   )
@@ -536,7 +538,7 @@ reconstructNodeSequences = function(tree_tibble) {
   parents = tree_tibble$parent
   reconstructed_dna_sequences = tree_tibble$reconstructed_dna_sequence
 
-  for (tip in filter(as_tibble(tree_tibble), !node %in% parent)$node) {
+  for (tip in filter(tibble::as_tibble(tree_tibble), !node %in% parent)$node) {
     descs = getParentsFromNodelist(parents, tip)
     nts_to_tip = nt_mutations[descs]
     first_empty_slot = min(which(is.na(reconstructed_dna_sequences[descs])))

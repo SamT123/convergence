@@ -221,7 +221,7 @@ getCladeSizeCDFs = function(
     bootstrap_replicate_id = integer()
   )
 
-  synonymous_nt_cdfs = add_row(
+  synonymous_nt_cdfs = tibble::add_row(
     synonymous_nt_cdfs,
     mutation = "Any synonymous mutation",
     aa_or_nt = "nt",
@@ -235,7 +235,7 @@ getCladeSizeCDFs = function(
   )
 
   for (s in aa_substitutions) {
-    focal_cdfs = add_row(
+    focal_cdfs = tibble::add_row(
       focal_cdfs,
       mutation = s,
       aa_or_nt = "aa",
@@ -250,7 +250,7 @@ getCladeSizeCDFs = function(
   }
 
   for (m in syn_nuc_mutations) {
-    focal_cdfs = add_row(
+    focal_cdfs = tibble::add_row(
       focal_cdfs,
       mutation = m,
       aa_or_nt = "nt",
@@ -265,7 +265,7 @@ getCladeSizeCDFs = function(
   }
 
   for (i in 1:n_bootstraps) {
-    synonymous_nt_cdfs = add_row(
+    synonymous_nt_cdfs = tibble::add_row(
       synonymous_nt_cdfs,
       mutation = "Any synonymous mutation",
       aa_or_nt = "nt",
@@ -279,7 +279,7 @@ getCladeSizeCDFs = function(
     )
 
     for (s in aa_substitutions) {
-      focal_cdfs = add_row(
+      focal_cdfs = tibble::add_row(
         focal_cdfs,
         mutation = s,
         aa_or_nt = "aa",
@@ -300,7 +300,7 @@ getCladeSizeCDFs = function(
     }
 
     for (m in syn_nuc_mutations) {
-      focal_cdfs = add_row(
+      focal_cdfs = tibble::add_row(
         focal_cdfs,
         mutation = m,
         aa_or_nt = "nt",

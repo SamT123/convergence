@@ -125,7 +125,7 @@ getNucCounts = function(
         mutations_per_site_measured = n_mutations / n_sites
       )
 
-    rates = add_row(
+    rates = tibble::add_row(
       rates,
       from = rep(fr, 3),
       to = as.character(rates_nt$to),
