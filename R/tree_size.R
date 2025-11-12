@@ -12,7 +12,6 @@ getTreeSizeAndNucRates = function(
   noise_model,
   excluded_positions = c(),
   use_fitted_rates = T,
-  use_normalised_mutation_weights_for_tree_size = FALSE,
   seed = NULL
 ) {
   nuc_counts = getNucCounts(
@@ -37,10 +36,7 @@ getTreeSizeAndNucRates = function(
     nuc_counts$mutations_per_site = nuc_counts$mutations_per_site_measured
   }
 
-  tree_size_ratios = getTreeSizeNucWeightings(
-    nuc_counts,
-    use_normalised_mutation_weights_for_tree_size
-  )
+  tree_size_ratios = getTreeSizeNucWeightings(nuc_counts)
 
   tree_size_fn = function(
     nuc_counts
@@ -284,17 +280,8 @@ getTreeSizeNucWeightings = function(
       n_sites = n_sites
     )
 
-  if (!use_normalised_mutation_weights_for_tree_size) {
-    nuc_weights = nuc_weights %>%
-      mutate(
-        ratio = n_sites
-      )
-  } else {
-    nuc_weights = nuc_weights %>%
-      mutate(
-        ratio = n_sites * 1 / mutations_per_site_measured
-      )
-  }
+  nuc_weights = nuc_weights %>%
+    mutate(ratio = n_sites)
 
   nuc_weights
 }

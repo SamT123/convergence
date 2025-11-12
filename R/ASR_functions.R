@@ -164,10 +164,10 @@ matchTreeTibbles = function(tt1, tt2) {
   t2 = treeio::as.phylo(tt2, label = "label")
 
   node_match_1_l = getNodeMatchData(t1)
-  node_match_1 = map_chr(node_match_1_l, "node_match")
+  node_match_1 = purrr::map_chr(node_match_1_l, "node_match")
 
   node_match_2_l = getNodeMatchData(t2)
-  node_match_2 = map_chr(node_match_2_l, "node_match")
+  node_match_2 = purrr::map_chr(node_match_2_l, "node_match")
 
   stopifnot(!any(duplicated(node_match_1)))
   stopifnot(!any(duplicated(node_match_2)))
