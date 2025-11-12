@@ -11,7 +11,9 @@ makeTreeAndSequences = function(
   sequences
 ) {
   stopifnot("phylo" %in% class(tree))
-  stopifnot(all(c("Isolate_unique_identifier", "dna_sequence") %in% names(sequences))) # fmt: skip
+  stopifnot(all(
+    c("Isolate_unique_identifier", "dna_sequence") %in% names(sequences)
+  )) # fmt: skip
 
   tree$node.label = paste0(
     "internalnode_",
@@ -225,86 +227,87 @@ getUsherMutations = function(
     add_to_PATH(usher_path)
   }
 
-  dir = paste0(
-    "tempdir",
-    paste(sample(LETTERS, 10, replace = T), collapse = ""),
-    "/"
-  )
-  dir.create(dir)
-  on.exit(unlink(dir, recursive = T))
+  dir = fs::path("usher_tmp")
+  fs::dir_create(dir)
+  on.exit(fs::dir_delete(dir))
 
   castor::write_tree(
     tree = tree,
-    file = paste0(dir, "/tree.nw")
+    file = fs::path(dir, "tree.nw")
   )
 
   seqUtils::write_fast_fasta(
     sequences,
     names(sequences),
-    paste0(dir, "/sequences.fasta")
+    fs::path(dir, "sequences.fasta")
   )
 
   seqUtils::write_fast_fasta(
     nuc_ref[[1]],
     "ref",
-    paste0(dir, "/nuc_ref.fasta")
+    fs::path(dir, "nuc_ref.fasta")
   )
 
   system(
     paste0(
       "faToVcf ",
-      paste0(dir, "/sequences.fasta"),
+      fs::path(dir, "sequences.fasta"),
       " ",
-      paste0(dir, "/sequences.vcf")
+      fs::path(dir, "sequences.vcf")
     )
   )
 
   system(
     paste0(
       "usher -t ",
-      paste0(dir, "/tree.nw"),
+      fs::path(dir, "tree.nw"),
+      " -d ",
+      dir,
       " -v ",
-      paste0(dir, "/sequences.vcf"),
+      fs::path(dir, "sequences.vcf"),
       " -o ",
-      paste0(dir, "/MAT.pb"),
+      fs::path(dir, "MAT.pb"),
       " -l "
     )
   )
 
   cat(
     paste0(
-      'NC_045512v2	ncbiGenes.genePred	CDS	1	',
+      'X	ncbiGenes.genePred	CDS	1	',
       nchar(sequences[[1]]),
-      '	.	+	0	gene_id "HA"; transcript_id "HA"; exon_number "1"; exon_id "HA";'
+      '	.	+	0	gene_id "HA"; transcript_id "HA"; exon_number "1"; exon_id "X";'
     ),
-    file = paste0(dir, "/GTF.gtf")
+    file = fs::path(dir, "GTF.gtf")
   )
 
   system(
     paste0(
       "matUtils summary --translate ",
-      paste0(dir, "/out.tsv"),
+      fs::path(dir, "out.tsv"),
       " --input-mat ",
-      paste0(dir, "/MAT.pb"),
+      fs::path(dir, "MAT.pb"),
       "  --input-gtf ",
-      paste0(dir, "/GTF.gtf"),
+      fs::path(dir, "GTF.gtf"),
       " --input-fasta ",
-      paste0(dir, "/nuc_ref.fasta")
+      fs::path(dir, "nuc_ref.fasta")
     )
   )
 
   system(
     paste0(
       "matUtils extract --input-mat ",
-      paste0(dir, "/MAT.pb"),
+      fs::path(dir, "MAT.pb"),
       " --write-tree ",
-      paste0(dir, "/new_tree.nw")
+      fs::path(dir, "new_tree.nw")
     )
   )
 
   list(
-    tree = castor::read_tree(file = paste0(dir, "/new_tree.nw")),
-    asr = readr::read_tsv(paste0(dir, "/out.tsv"))
+    tree = castor::read_tree(file = fs::path(dir, "new_tree.nw")),
+    asr = readr::read_tsv(
+      fs::path(dir, "out.tsv"),
+      show_col_types = FALSE
+    )
   )
 }
 
@@ -507,7 +510,7 @@ reconstructNodeSequences = function(tree_tibble) {
 
   random_tip = sample(
     filter(
-      tree_tibble,
+      as_tibble(tree_tibble),
       !node %in% parent,
       stringr::str_count(dna_sequence, "N") ==
         min(stringr::str_count(dna_sequence, "N"), na.rm = T)
@@ -519,7 +522,7 @@ reconstructNodeSequences = function(tree_tibble) {
   nts_to_root = rev(unlist(nts_to_root))
 
   root_sequence = applySubstitutions(
-    filter(tree_tibble, node == random_tip)$dna_sequence,
+    filter(as_tibble(tree_tibble), node == random_tip)$dna_sequence,
     nts_to_root,
     backwards = T
   )
@@ -533,7 +536,7 @@ reconstructNodeSequences = function(tree_tibble) {
   parents = tree_tibble$parent
   reconstructed_dna_sequences = tree_tibble$reconstructed_dna_sequence
 
-  for (tip in filter(tree_tibble, !node %in% parent)$node) {
+  for (tip in filter(as_tibble(tree_tibble), !node %in% parent)$node) {
     descs = getParentsFromNodelist(parents, tip)
     nts_to_tip = nt_mutations[descs]
     first_empty_slot = min(which(is.na(reconstructed_dna_sequences[descs])))
