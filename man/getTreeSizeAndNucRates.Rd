@@ -9,6 +9,7 @@ getTreeSizeAndNucRates(
   noise_model,
   excluded_positions = c(),
   use_fitted_rates = T,
+  use_normalised_mutation_weights_for_tree_size = FALSE,
   seed = NULL
 )
 }

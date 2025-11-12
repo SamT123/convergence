@@ -17,6 +17,8 @@ findBranch(
 \item{target_aa_substitutions}{aa substitutions which the branch should have}
 
 \item{target_nt_mutations}{nt mutations which the branch should have}
+
+\item{allow_ambiguous}{in cases where the aa and nt specification matches multiple branches, should an error be thrown (default), or should the branch with the largest number of descendant tips be used?}
 }
 \description{
 Finds the branch where all of the target_aa_substitutions and target_nt_mutations are present, and at leaast occurs on the branch. Errors if the number of such branches is not exactly one.
