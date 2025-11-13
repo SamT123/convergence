@@ -248,8 +248,11 @@ fitNoiseModel = function(
 addPValuesToMutationTable = function(
   mutation_table,
   nuc_counts,
-  sampling_function
+  sampling_function,
+  alternative = c("greater", "two.sided", "less")
 ) {
+  alternative = match.arg(alternative)
+
   whole_tree_parameters = setNames(
     nuc_counts$parameters,
     nuc_counts$from_to
@@ -280,7 +283,186 @@ addPValuesToMutationTable = function(
   mutation_table$p = purrr::map2_dbl(
     mutation_table$n,
     mutation_table$n_samples,
-    ~ mean(.y >= .x)
+    ~ hypothesisTest(
+      samples = .y,
+      observed = .x,
+      alternative = alternative
+    )
   )
   select(mutation_table, -n_samples)
+}
+
+hypothesisTest = function(
+  samples,
+  observed,
+  alternative = c("greater", "two.sided", "less")
+) {
+  alternative = match.arg(alternative)
+  p = dplyr::case_match(
+    alternative,
+    "greater" ~ mean(samples >= observed),
+    "less" ~ mean(samples <= observed),
+    "two.sided" ~ 2 * min(mean(samples <= observed), mean(samples >= observed))
+  )
+
+  min(p, 1)
+}
+
+#' Add CIs to mutation table
+#'
+#' inverts the hypothesis test in addPValuesToMutationTable to compute
+#' confidence intervals (or compatibility set) for convergence ratios. CIs are
+#' constructed by inversion to CI overlap with ratio=1.0 corresponds to p < alpha.
+#'
+#' exported because it is slow, so is not added to mutation_table by default
+#'
+#' @param mutation_table a mutation table
+#' @param nuc_counts from getTreeInfo
+#' @param sampling_function from getTreeInfo
+#' @param confidence_level default 0.95
+#' @param alternative "two.sided", "greater" (matching addPValuesToMutationTable), or "less"
+#'
+#' @return mutation_table with ratio_lower and ratio_upper cols
+#'
+#' @export
+addCIsToMutationTable = function(
+  mutation_table,
+  nuc_counts,
+  sampling_function,
+  confidence_level = 0.95,
+  alternative = c("two.sided", "greater", "less")
+) {
+  alternative = match.arg(alternative)
+
+  whole_tree_parameters = setNames(
+    nuc_counts$parameters,
+    nuc_counts$from_to
+  )
+
+  alpha = 1 - confidence_level
+
+  # helper function
+  computePValueForRatio = function(
+    ratio,
+    observed,
+    components,
+    n_samples = 1e4
+  ) {
+    component_samples = purrr::map(
+      components,
+      function(component) {
+        params = whole_tree_parameters[[component[["nt_mutation_class"]]]]
+        params[["centrality"]] = ratio * component[["expected_n"]] # scale centrality by ratio
+        sampling_function(
+          n = n_samples,
+          parameters = params
+        )
+      }
+    )
+
+    null_samples = purrr::reduce(
+      component_samples,
+      \(x, y) x + y
+    )
+
+    hypothesisTest(
+      samples = null_samples,
+      observed = observed,
+      alternative = alternative
+    )
+  }
+
+  findCIBounds = function(observed, expected_n, components) {
+    observed_ratio = observed / expected_n
+
+    if (alternative == "two.sided") {
+      # 2 sided CI: p-value has n-shape as function of ratio
+      ## (low at extremes, high near observed_ratio)
+      # need to find where p = alpha on each sides of observed_ratio
+
+      if (observed == 0) {
+        lower_bound = 0
+      } else {
+        # lower bound is below observed ratio
+        tryCatch(
+          {
+            lower_result = uniroot(
+              function(ratio) {
+                computePValueForRatio(ratio, observed, components) - alpha
+              },
+              interval = c(2**-12, observed_ratio),
+              tol = 0.01
+            )
+            lower_bound = lower_result$root
+          },
+          error = function(e) {
+            lower_bound = 0
+          }
+        )
+      }
+
+      # upper bound is above observed ratio
+      tryCatch(
+        {
+          upper_result = uniroot(
+            function(ratio) {
+              computePValueForRatio(ratio, observed, components) - alpha
+            },
+            interval = c(observed_ratio, 2**12),
+            tol = 0.01
+          )
+          upper_bound = upper_result$root
+        },
+        error = function(e) {
+          upper_bound = Inf
+        }
+      )
+    } else {
+      # 1 sided CI (where is p = alpha?)
+
+      if (observed == 0 && alternative == "greater") {
+        bound = 0
+      } else {
+        tryCatch(
+          {
+            result = uniroot(
+              function(ratio) {
+                computePValueForRatio(ratio, observed, components) - alpha
+              },
+              interval = c(2**-12, 2**12),
+              tol = 0.01
+            )
+            bound = result$root
+          },
+          error = function(e) {
+            bound = if (alternative == "greater") 0 else Inf
+          }
+        )
+      }
+
+      if (alternative == "greater") {
+        lower_bound = bound
+        upper_bound = Inf
+      } else {
+        lower_bound = 0
+        upper_bound = bound
+      }
+    }
+
+    list(lower = lower_bound, upper = upper_bound)
+  }
+
+  cis = purrr::pmap(
+    list(
+      mutation_table$n,
+      mutation_table$expected_n,
+      mutation_table$components
+    ),
+    findCIBounds
+  )
+
+  mutation_table$ratio_lower = purrr::map_dbl(cis, "lower")
+  mutation_table$ratio_upper = purrr::map_dbl(cis, "upper")
+
+  mutation_table
 }
