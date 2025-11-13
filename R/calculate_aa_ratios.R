@@ -217,20 +217,17 @@ addObservedMutationCounts = function(codon_table, tree_tibble) {
     select(
       nt_mutations,
       nt_mutations_is_single,
-      codon_changes,
-      aa_mutations
+      codon_changes
     ) %>%
     tidyr::unnest(c(
       nt_mutations,
       nt_mutations_is_single,
-      codon_changes,
-      aa_mutations
+      codon_changes
     )) %>%
     filter(nt_mutations_is_single) %>%
     group_by(nt_mutations, codon_changes) %>%
     reframe(
       n = n(),
-      aa_mutations = list(unique(aa_mutations)),
       codon_from = stringr::str_sub(unique(codon_changes), 1, 3),
       .groups = "drop"
     ) %>%
@@ -239,19 +236,14 @@ addObservedMutationCounts = function(codon_table, tree_tibble) {
       from = stringr::str_sub(nt_mutations, 1, 1),
       at = stringr::str_sub(nt_mutations, 2, -2),
       to = stringr::str_sub(nt_mutations, -1, -1),
-      aa_mutation = unlist(aa_mutations),
       nt_mutation = nt_mutations
     )
-
-  if (!"aa_mutation" %in% colnames(observed_mutations)) {
-    observed_mutations$aa_mutation = character()
-  }
 
   observed_mutations$nt_mutation = as.character(observed_mutations$nt_mutation)
 
   mutation_table = left_join(
     mutation_table,
-    select(observed_mutations, nt_mutation, codon_from, n, aa_mutation),
+    select(observed_mutations, nt_mutation, codon_from, n),
     by = c("nt_mutation" = "nt_mutation", "codon" = "codon_from")
   )
 
@@ -279,55 +271,12 @@ addObservedMutationCounts = function(codon_table, tree_tibble) {
 }
 
 summariseMutationTableToAAsAndSyns = function(mutation_table) {
-  syn_nt_mutations = mutation_table %>%
-    mutate(
-      is_syn = (Biostrings::GENETIC_CODE[codon] ==
-        Biostrings::GENETIC_CODE[
-          purrr::pmap_chr(
-            list(codon, at, to),
-            function(codon, at, to) {
-              applySubstitutions(
-                codon,
-                paste0("X", 1 + (unique(at) - 1) %% 3, unique(to))
-              )
-            }
-          )
-        ])
-    ) %>%
-    filter(is_syn)
-
-  if (nrow(syn_nt_mutations) > 0) {
-    syn_nt_mutations = syn_nt_mutations %>%
-      group_by(nt_mutation, codon) %>%
-      summarise(
-        expected_n = sum(mutations_per_site_interp),
-        n = sum(n),
-        tree_size = unique(tree_size),
-        components = list(list(list(
-          nt_mutation = (nt_mutation),
-          nt_mutation_class = paste0(
-            stringr::str_sub(nt_mutation, 1, 1),
-            stringr::str_sub(nt_mutation, -1, -1)
-          ),
-          tree_size = (tree_size),
-          expected_n = (expected_n)
-        ))),
-        .groups = "drop"
-      ) %>%
-      ungroup() %>%
-      mutate(
-        ratio = n / expected_n,
-      ) %>%
-      arrange(-ratio) %>%
-      mutate(
-        from = stringr::str_sub(nt_mutation, 1, 1),
-        at = stringr::str_sub(nt_mutation, 2, -2),
-        to = stringr::str_sub(nt_mutation, -1, -1)
-      )
+  # fmt: skip
+  if (any(duplicated(paste(mutation_table$nt_mutation, mutation_table$codon)))) {
+    stop("duplicated codon - mutation pairs in mutation table!")
   }
 
-  aa_mutation_table = mutation_table %>%
-    distinct() %>%
+  mutation_table = mutation_table %>%
     group_by(nt_mutation, codon) %>%
     summarise(
       expected_n = sum(mutations_per_site_interp),
@@ -343,8 +292,6 @@ summariseMutationTableToAAsAndSyns = function(mutation_table) {
       tree_size = unique(tree_size),
       .groups = "drop"
     ) %>%
-    filter(!is_syn) %>%
-    distinct() %>%
     group_by(aa_mutation, nt_mutation, codon) %>%
     mutate(
       components = list(list(
@@ -354,19 +301,21 @@ summariseMutationTableToAAsAndSyns = function(mutation_table) {
           stringr::str_sub(nt_mutation, -1, -1)
         ),
         tree_size = (tree_size),
-        expected_n = (expected_n)
+        expected_n = (expected_n),
+        n = (n)
       ))
-    ) %>%
+    )
+
+  nonsyn_mutation_table = mutation_table %>%
+    filter(!is_syn) %>%
     group_by(aa_mutation) %>%
     summarise(
       components = list(components),
       expected_n = sum(expected_n),
       n = sum(n),
       tree_size = sum(tree_size),
+      ratio = n / expected_n,
       .groups = "drop"
-    ) %>%
-    mutate(
-      ratio = n / expected_n
     ) %>%
     arrange(-ratio) %>%
     mutate(
@@ -376,5 +325,16 @@ summariseMutationTableToAAsAndSyns = function(mutation_table) {
       to = stringr::str_sub(aa_mutation, -1, -1)
     )
 
-  list(aas = aa_mutation_table, syn_nucs = syn_nt_mutations)
+  syn_mutation_table = mutation_table %>%
+    mutate(
+      components = list(components), # to match nonsyn_mutation_table
+      from = stringr::str_sub(nt_mutation, 1, 1),
+      at = stringr::str_sub(nt_mutation, 2, -2),
+      to = stringr::str_sub(nt_mutation, -1, -1)
+    )
+
+  list(
+    aas = nonsyn_mutation_table,
+    syn_nucs = syn_mutation_table
+  )
 }
