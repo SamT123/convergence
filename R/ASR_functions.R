@@ -538,7 +538,14 @@ reconstructNodeSequences = function(tree_tibble) {
   parents = tree_tibble$parent
   reconstructed_dna_sequences = tree_tibble$reconstructed_dna_sequence
 
-  for (tip in filter(tibble::as_tibble(tree_tibble), !node %in% parent)$node) {
+  message("Reconstructing node sequences...")
+  tips = filter(tibble::as_tibble(tree_tibble), !node %in% parent)$node
+  for (i in seq_along(tips)) {
+    if (i %% 1000 == 0) {
+      message(i, " / ", length(tips))
+    }
+
+    tip = tips[[i]]
     descs = getParentsFromNodelist(parents, tip)
     nts_to_tip = nt_mutations[descs]
     first_empty_slot = min(which(is.na(reconstructed_dna_sequences[descs])))
