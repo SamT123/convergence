@@ -510,15 +510,12 @@ reconstructNodeSequences = function(tree_tibble) {
   tree_tibble$nt_mutations[tree_tibble$parent == tree_tibble$node] = list(NULL)
   tree_tibble$reconstructed_dna_sequence = NA
 
-  random_tip = sample(
-    filter(
-      tibble::as_tibble(tree_tibble),
-      !node %in% parent,
-      stringr::str_count(dna_sequence, "N") ==
-        min(stringr::str_count(dna_sequence, "N"), na.rm = T)
-    )$node,
-    1
-  )
+  random_tip = filter(
+    tibble::as_tibble(tree_tibble),
+    !node %in% parent,
+    stringr::str_count(dna_sequence, "[ATCG]") ==
+      max(stringr::str_count(dna_sequence, "[ATCG]"), na.rm = T)
+  )$node[[1]]
 
   nts_to_root = tree_tibble$nt_mutations[getParents(tree_tibble, random_tip)]
   nts_to_root = rev(unlist(nts_to_root))
