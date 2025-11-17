@@ -324,6 +324,7 @@ hypothesisTest = function(
 #'
 #' @return mutation_table with ratio_lower and ratio_upper cols
 #'
+#' @importFrom stats uniroot
 #' @export
 addCIsToMutationTable = function(
   mutation_table,
