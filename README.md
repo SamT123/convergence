@@ -6,7 +6,7 @@
 
 <!-- badges: end -->
 
-R package for detecting convergent molecular evolution in phylogenetic trees.
+R package for detecting convergent substitutions in phylogenetic trees.
 
 ## Installation
 
@@ -47,4 +47,4 @@ ratios <- getSubstitutionRatios(
 Requires external tools:
 
 - [UShER](https://github.com/yatisht/usher) (matUtils, faToVcf)
-- [Chronumental](https://github.com/theosanderson/chronumental) (optional, for time-calibration)
+- [Chronumental](https://github.com/theosanderson/chronumental) (optional, for node dating)
