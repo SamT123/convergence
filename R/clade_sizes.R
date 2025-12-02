@@ -162,7 +162,7 @@ getAllCladeSizes = function(
 
   list(
     aas = makeTibble(aa_clade_sizes, ps = ps),
-    syn_nucs = makeTibble(syn_nt_clade_sizes, ps = ps)
+    nucs = makeTibble(nt_clade_sizes, ps = ps)
   )
 }
 
@@ -183,7 +183,7 @@ getCladeSizeCDFs = function(
   tree_and_sequences,
   tree_tibble_for_node_search = tree_and_sequences$tree_tibble,
   aa_substitutions,
-  syn_nuc_mutations,
+  nuc_mutations,
   n_bootstraps = 100,
   max_log2_clade_size = 10,
   log2_clade_size_resolution = 0.1
@@ -198,12 +198,12 @@ getCladeSizeCDFs = function(
       setNames(.$clade_sizes, .$mutation)
     }
 
-  syn_nuc_mutation_clade_sizes = all_clade_sizes$syn_nucs %>%
+  syn_nuc_mutation_clade_sizes = all_clade_sizes$nucs %>%
     {
       setNames(.$clade_sizes, .$mutation)
     }
 
-  all_synonymous_clade_sizes = unlist(all_clade_sizes$syn_nucs$clade_sizes)
+  all_synonymous_clade_sizes = unlist(all_clade_sizes$nucs$clade_sizes)
 
   focal_cdfs = tibble(
     mutation = character(),
