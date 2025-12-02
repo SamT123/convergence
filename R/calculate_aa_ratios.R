@@ -306,7 +306,7 @@ summariseMutationTableToAAsAndSyns = function(mutation_table) {
       ))
     )
 
-  nonsyn_mutation_table = mutation_table %>%
+  aa_mutation_table = mutation_table %>%
     filter(!is_syn) %>%
     group_by(aa_mutation) %>%
     summarise(
@@ -325,16 +325,16 @@ summariseMutationTableToAAsAndSyns = function(mutation_table) {
       to = stringr::str_sub(aa_mutation, -1, -1)
     )
 
-  syn_mutation_table = mutation_table %>%
+  nt_mutation_table = mutation_table %>%
     mutate(
-      components = list(components), # to match nonsyn_mutation_table
+      components = list(components), # to match aa_mutation_table
       from = stringr::str_sub(nt_mutation, 1, 1),
       at = stringr::str_sub(nt_mutation, 2, -2),
       to = stringr::str_sub(nt_mutation, -1, -1)
     )
 
   list(
-    aas = nonsyn_mutation_table,
-    syn_nucs = syn_mutation_table
+    aas = aa_mutation_table,
+    nucs = nt_mutation_table
   )
 }
