@@ -162,7 +162,7 @@ getAllCladeSizes = function(
 
   list(
     aas = makeTibble(aa_clade_sizes, ps = ps),
-    nucs = makeTibble(nt_clade_sizes, ps = ps)
+    nucs = makeTibble(syn_nt_clade_sizes, ps = ps)
   )
 }
 
