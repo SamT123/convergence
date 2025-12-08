@@ -304,7 +304,8 @@ summariseMutationTableToAAsAndSyns = function(mutation_table) {
         expected_n = (expected_n),
         n = (n)
       ))
-    )
+    ) %>%
+    ungroup()
 
   aa_mutation_table = mutation_table %>%
     filter(!is_syn) %>%
