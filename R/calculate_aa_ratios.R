@@ -328,6 +328,7 @@ summariseMutationTableToAAsAndSyns = function(mutation_table) {
   nt_mutation_table = mutation_table %>%
     mutate(
       components = list(components), # to match aa_mutation_table
+      ratio = n / expected_n,
       from = stringr::str_sub(nt_mutation, 1, 1),
       at = stringr::str_sub(nt_mutation, 2, -2),
       to = stringr::str_sub(nt_mutation, -1, -1)
