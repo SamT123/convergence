@@ -9,7 +9,9 @@ getSubstitutionRatios(
   nuc_rates,
   tree_size_fn,
   sampling_function,
-  positions
+  positions,
+  calculate_p_values = TRUE,
+  verbose = TRUE
 )
 }
 \arguments{
@@ -22,6 +24,10 @@ getSubstitutionRatios(
 \item{sampling_function}{from \code{getTreeSizeAndNucRates}}
 
 \item{positions}{aa positions for which to calculate log convergence}
+
+\item{calculate_p_values}{should p values be calculated? default TRUE}
+
+\item{verbose}{report on progress? default}
 }
 \description{
 Calculate log convergence ratios
