@@ -5,6 +5,8 @@
 #' @param tree_size_fn from `getTreeSizeAndNucRates`
 #' @param sampling_function from `getTreeSizeAndNucRates`
 #' @param positions aa positions for which to calculate log convergence
+#' @param calculate_p_values should p values be calculated? default TRUE
+#' @param verbose report on progress? default
 #'
 #'@export
 getSubstitutionRatios = function(
@@ -12,8 +14,12 @@ getSubstitutionRatios = function(
   nuc_rates,
   tree_size_fn,
   sampling_function,
-  positions
+  positions,
+  calculate_p_values = TRUE,
+  verbose = TRUE
 ) {
+  # fmt: skip
+  if (verbose) message("Counting codons...")
   codon_table = getCodonTable(
     t_and_s_filtered$tree_tibble,
     positions
@@ -21,6 +27,8 @@ getSubstitutionRatios = function(
 
   codon_table_filtered = filter(codon_table, at %in% positions)
 
+  # fmt: skip
+  if (verbose) message("Calculating expected mutation counts...")
   codon_table_with_expected_n = addExpectedMutationsToCodonTable(
     t_and_s_filtered$tree_tibble,
     codon_table_filtered,
@@ -28,17 +36,25 @@ getSubstitutionRatios = function(
     tree_size_fn
   )
 
+  # fmt: skip
+  if (verbose) message("Counting observed mutation counts...")
   mutation_table = addObservedMutationCounts(
     codon_table_with_expected_n,
     t_and_s_filtered$tree_tibble
   )
 
+  # fmt: skip
+  if (verbose) message("Summarising...")
   mutation_table = summariseMutationTableToAAsAndSyns(mutation_table)
 
-  mutation_table = purrr::map(
-    mutation_table,
-    ~ addPValuesToMutationTable(.x, nuc_rates, sampling_function)
-  )
+  if (calculate_p_values) {
+    # fmt: skip
+    if (verbose) message("Calculating p-values...")
+    mutation_table = purrr::map(
+      mutation_table,
+      ~ addPValuesToMutationTable(.x, nuc_rates, sampling_function)
+    )
+  }
 
   mutation_table
 }
