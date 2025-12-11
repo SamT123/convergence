@@ -9,7 +9,8 @@ getTimeIntervalSubstitutionRatios(
   tree_info,
   time_boundaries,
   positions = 1:550,
-  date_column = "estimated_date_nearest"
+  date_column = "estimated_date_nearest",
+  calculate_p_values = TRUE
 )
 }
 \arguments{
@@ -22,6 +23,11 @@ getTimeIntervalSubstitutionRatios(
 \item{positions}{amino acid positions to analyse}
 
 \item{date_column}{column to use for date filtering}
+
+\item{calculate_p_values}{controls p-value calculation. Can be TRUE (calculate for all positions),
+FALSE (skip p-values), or a list with optional elements: \code{aas} (positions for amino acid p-values),
+\code{nucs} (positions for nucleotide p-values), \code{min_LCR} (minimum log convergence ratio threshold),
+\code{max_LCR} (maximum log convergence ratio threshold). Default TRUE}
 }
 \description{
 Title

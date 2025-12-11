@@ -5,6 +5,10 @@
 #' @param time_boundaries Boundaries between time intervals. The final interval will have boundaries (last_time_interval, Inf)
 #' @param positions amino acid positions to analyse
 #' @param date_column column to use for date filtering
+#' @param calculate_p_values controls p-value calculation. Can be TRUE (calculate for all positions),
+#'   FALSE (skip p-values), or a list with optional elements: `aas` (positions for amino acid p-values),
+#'   `nucs` (positions for nucleotide p-values), `min_LCR` (minimum log convergence ratio threshold),
+#'   `max_LCR` (maximum log convergence ratio threshold). Default TRUE
 #'
 #' @export
 getTimeIntervalSubstitutionRatios = function(
@@ -12,7 +16,8 @@ getTimeIntervalSubstitutionRatios = function(
   tree_info,
   time_boundaries,
   positions = 1:550,
-  date_column = "estimated_date_nearest"
+  date_column = "estimated_date_nearest",
+  calculate_p_values = TRUE
 ) {
   time_boundaries = c(time_boundaries, "2100-01-01")
 
@@ -47,7 +52,8 @@ getTimeIntervalSubstitutionRatios = function(
       tree_info$nuc_rates,
       tree_info$tree_size_fn,
       tree_info$sampling_function,
-      positions = positions
+      positions = positions,
+      calculate_p_values = calculate_p_values
     )
 
     time_interval_name = paste0(
