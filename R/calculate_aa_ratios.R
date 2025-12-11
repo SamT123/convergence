@@ -110,7 +110,7 @@ getSubstitutionRatios = function(
         addPValuesToMutationTable(
           filter(
             mutation_table,
-            at %in% positions | dplyr::between(log2(ratio), min_LCR, max_LCR)
+            at %in% positions & dplyr::between(log2(ratio), min_LCR, max_LCR)
           ),
           nuc_rates,
           sampling_function,
