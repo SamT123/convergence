@@ -16,6 +16,7 @@ getSubstitutionRatios = function(
   sampling_function,
   positions,
   calculate_p_values = TRUE,
+  p_alternative = "greater",
   verbose = TRUE
 ) {
   # fmt: skip
@@ -107,7 +108,8 @@ getSubstitutionRatios = function(
             at %in% positions | dplyr::between(log2(ratio), min_LCR, max_LCR)
           ),
           nuc_rates,
-          sampling_function
+          sampling_function,
+          alternative = p_alternative
         ),
         filter(mutation_table, !at %in% positions) %>% mutate(p = NA)
       )
