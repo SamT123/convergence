@@ -11,6 +11,7 @@ getSubstitutionRatios(
   sampling_function,
   positions,
   calculate_p_values = TRUE,
+  p_alternative = "greater",
   verbose = TRUE
 )
 }
@@ -25,9 +26,15 @@ getSubstitutionRatios(
 
 \item{positions}{aa positions for which to calculate log convergence}
 
-\item{calculate_p_values}{should p values be calculated? default TRUE}
+\item{calculate_p_values}{controls p-value calculation. Can be TRUE (calculate for all positions),
+FALSE (skip p-values), or a list with optional elements: \code{aas} (positions for amino acid p-values),
+\code{nucs} (positions for nucleotide p-values), \code{min_LCR} (minimum log convergence ratio threshold),
+\code{max_LCR} (maximum log convergence ratio threshold). Default TRUE}
 
-\item{verbose}{report on progress? default}
+\item{p_alternative}{alternative hypothesis for p-value calculation. One of "greater" (default),
+"less", or "two.sided"}
+
+\item{verbose}{report on progress? default TRUE}
 }
 \description{
 Calculate log convergence ratios
