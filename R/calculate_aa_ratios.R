@@ -5,8 +5,13 @@
 #' @param tree_size_fn from `getTreeSizeAndNucRates`
 #' @param sampling_function from `getTreeSizeAndNucRates`
 #' @param positions aa positions for which to calculate log convergence
-#' @param calculate_p_values should p values be calculated? default TRUE
-#' @param verbose report on progress? default
+#' @param calculate_p_values controls p-value calculation. Can be TRUE (calculate for all positions),
+#'   FALSE (skip p-values), or a list with optional elements: `aas` (positions for amino acid p-values),
+#'   `nucs` (positions for nucleotide p-values), `min_LCR` (minimum log convergence ratio threshold),
+#'   `max_LCR` (maximum log convergence ratio threshold). Default TRUE
+#' @param p_alternative alternative hypothesis for p-value calculation. One of "greater" (default),
+#'   "less", or "two.sided"
+#' @param verbose report on progress? default TRUE
 #'
 #'@export
 getSubstitutionRatios = function(
