@@ -47,14 +47,72 @@ getSubstitutionRatios = function(
   if (verbose) message("Summarising...")
   mutation_table = summariseMutationTableToAAsAndSyns(mutation_table)
 
-  if (calculate_p_values) {
-    # fmt: skip
-    if (verbose) message("Calculating p-values...")
-    mutation_table = purrr::map(
-      mutation_table,
-      ~ addPValuesToMutationTable(.x, nuc_rates, sampling_function)
+  # fmt: skip
+  if (isTRUE(calculate_p_values)) {
+    p_value_positions = list(
+      aas = unique(mutation_table[["aas"]][["at"]]),
+      nucs = unique(mutation_table[["nucs"]][["at"]])
     )
+    min_LCR = -Inf
+    max_LCR = +Inf
+  } else if (is.list(calculate_p_values)){
+
+    if (!all(names(calculate_p_values) %in% c("aas", "nucs", "min_LCR", "max_LCR"))){
+      stop("")
+    }
+
+    p_value_positions = list()
+
+    if (!"aas" %in% names(calculate_p_values)){
+      p_value_positions[["aas"]] = positions
+    } else {
+      p_value_positions[["aas"]] = calculate_p_values[["aas"]]
+    }
+
+    if (!"nucs" %in% names(calculate_p_values)){
+      p_value_positions[["nucs"]] = positions
+    } else {
+      p_value_positions[["nucs"]] = calculate_p_values[["nucs"]]
+    }
+
+    if (!"min_LCR" %in% names(calculate_p_values)){
+      min_LCR = -Inf
+    } else {
+      min_LCR = calculate_p_values[["min_LCR"]]
+    }
+
+    if (!"max_LCR" %in% names(calculate_p_values)){
+      max_LCR = Inf
+    } else {
+      max_LCR = calculate_p_values[["max_LCR"]]
+    }
+    
+  } else if (isFALSE(calculate_p_values)){
+    return(mutation_table)
+  } else{
+    stop("calculate_p_values should be TRUE, FALSE, or list")
   }
+
+  # fmt: skip
+  if (verbose) message("Calculating p-values...")
+
+  mutation_table = purrr::map2(
+    mutation_table[c("aas", "nucs")],
+    p_value_positions[c("aas", "nucs")],
+    function(mutation_table, positions) {
+      bind_rows(
+        addPValuesToMutationTable(
+          filter(
+            mutation_table,
+            at %in% positions | dplyr::between(log2(ratio), min_LCR, max_LCR)
+          ),
+          nuc_rates,
+          sampling_function
+        ),
+        filter(mutation_table, !at %in% positions) %>% mutate(p = NA)
+      )
+    }
+  )
 
   mutation_table
 }
