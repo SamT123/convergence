@@ -106,17 +106,21 @@ getSubstitutionRatios = function(
     mutation_table[c("aas", "nucs")],
     p_value_positions[c("aas", "nucs")],
     function(mutation_table, positions) {
+      # fmt: skip
+      mutation_table_split = split(
+        mutation_table,
+        mutation_table$at %in% positions &
+          dplyr::between(log2(mutation_table$ratio), min_LCR, max_LCR)
+      )
       bind_rows(
         addPValuesToMutationTable(
-          filter(
-            mutation_table,
-            at %in% positions & dplyr::between(log2(ratio), min_LCR, max_LCR)
-          ),
+          mutation_table_split[["TRUE"]],
           nuc_rates,
           sampling_function,
           alternative = p_alternative
         ),
-        filter(mutation_table, !at %in% positions) %>% mutate(p = NA)
+        mutation_table_split[["FALSE"]] %>%
+          mutate(p = NA)
       )
     }
   )
