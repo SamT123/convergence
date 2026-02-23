@@ -176,6 +176,7 @@ matchTreeTibbles = function(tt1, tt2) {
   match(node_match_1, node_match_2)
 }
 
+
 addUsherMutations = function(
   tree_and_sequences,
   aa_ref,
@@ -216,7 +217,6 @@ addUsherMutations = function(
   tree_and_sequences_joined
 }
 
-
 getUsherMutations = function(
   tree,
   sequences,
@@ -227,7 +227,7 @@ getUsherMutations = function(
     add_to_PATH(usher_path)
   }
 
-  dir = fs::path("usher_tmp")
+  dir = fs::path(paste0("usher_tmp_", paste0(sample(0:9, 5), collapse = "")))
   fs::dir_create(dir)
   on.exit(fs::dir_delete(dir))
 
@@ -236,9 +236,22 @@ getUsherMutations = function(
     file = fs::path(dir, "tree.nw")
   )
 
+  # Validate nuc_ref before use as VCF reference.
+  ref_seq <- toupper(nuc_ref[[1]])
+  aln_len <- unique(nchar(sequences))
+  stopifnot(
+    "nuc_ref contains gaps (-)" = !grepl("-", ref_seq),
+    "nuc_ref contains Ns" = !grepl("N", ref_seq),
+    "sequences are not all the same length" = length(aln_len) == 1L,
+    "nuc_ref length != alignment length" = nchar(ref_seq) == aln_len
+  )
+
+  # Write nuc_ref first so faToVcf uses it as the VCF reference.
+  # nuc_ref is gap-free, so VCF positions equal alignment positions —
+  # no coordinate conversion needed downstream.
   seqUtils::write_fast_fasta(
-    sequences,
-    names(sequences),
+    c(nuc_ref[[1]], sequences),
+    c("nuc_ref", names(sequences)),
     fs::path(dir, "sequences.fasta")
   )
 
@@ -248,59 +261,63 @@ getUsherMutations = function(
     fs::path(dir, "nuc_ref.fasta")
   )
 
-  system(
-    paste0(
-      "faToVcf ",
-      fs::path(dir, "sequences.fasta"),
-      " ",
-      fs::path(dir, "sequences.vcf")
-    )
-  )
+  ret <- system(paste0(
+    "faToVcf ",
+    fs::path(dir, "sequences.fasta"),
+    " ",
+    fs::path(dir, "sequences.vcf")
+  ))
+  if (ret != 0L) {
+    stop(sprintf("faToVcf failed (exit code %d)", ret))
+  }
 
-  system(
-    paste0(
-      "usher -t ",
-      fs::path(dir, "tree.nw"),
-      " -d ",
-      dir,
-      " -v ",
-      fs::path(dir, "sequences.vcf"),
-      " -o ",
-      fs::path(dir, "MAT.pb"),
-      " -l "
-    )
-  )
+  ret <- system(paste0(
+    "usher -t ",
+    fs::path(dir, "tree.nw"),
+    " -d ",
+    dir,
+    " -v ",
+    fs::path(dir, "sequences.vcf"),
+    " -o ",
+    fs::path(dir, "MAT.pb"),
+    " -l "
+  ))
+  if (ret != 0L) {
+    stop(sprintf("usher failed (exit code %d)", ret))
+  }
 
   cat(
     paste0(
       'X	ncbiGenes.genePred	CDS	1	',
       nchar(sequences[[1]]),
-      '	.	+	0	gene_id "HA"; transcript_id "HA"; exon_number "1"; exon_id "X";'
+      '	.	+	0	gene_id "dummy"; transcript_id "dummy"; exon_number "1"; exon_id "X";'
     ),
     file = fs::path(dir, "GTF.gtf")
   )
 
-  system(
-    paste0(
-      "matUtils summary --translate ",
-      fs::path(dir, "out.tsv"),
-      " --input-mat ",
-      fs::path(dir, "MAT.pb"),
-      "  --input-gtf ",
-      fs::path(dir, "GTF.gtf"),
-      " --input-fasta ",
-      fs::path(dir, "nuc_ref.fasta")
-    )
-  )
+  ret <- system(paste0(
+    "matUtils summary --translate ",
+    fs::path(dir, "out.tsv"),
+    " --input-mat ",
+    fs::path(dir, "MAT.pb"),
+    "  --input-gtf ",
+    fs::path(dir, "GTF.gtf"),
+    " --input-fasta ",
+    fs::path(dir, "nuc_ref.fasta")
+  ))
+  if (ret != 0L) {
+    stop(sprintf("matUtils summary failed (exit code %d)", ret))
+  }
 
-  system(
-    paste0(
-      "matUtils extract --input-mat ",
-      fs::path(dir, "MAT.pb"),
-      " --write-tree ",
-      fs::path(dir, "new_tree.nw")
-    )
-  )
+  ret <- system(paste0(
+    "matUtils extract --input-mat ",
+    fs::path(dir, "MAT.pb"),
+    " --write-tree ",
+    fs::path(dir, "new_tree.nw")
+  ))
+  if (ret != 0L) {
+    stop(sprintf("matUtils extract failed (exit code %d)", ret))
+  }
 
   list(
     tree = castor::read_tree(file = fs::path(dir, "new_tree.nw")),
@@ -310,7 +327,6 @@ getUsherMutations = function(
     )
   )
 }
-
 
 processUsherMutations = function(tree_and_sequences, aa_ref) {
   tree_and_sequences$tree_tibble$nt_mutations =
