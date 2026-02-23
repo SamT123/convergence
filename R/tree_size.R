@@ -264,7 +264,7 @@ getSplitFourFoldSynPositionsFromTreeAndSequences = function(
     ]
   )
 
-  four_fold_syn_nuc_positions
+  four_fold_syn_nuc_positions[c("A", "T", "C", "G")]
 }
 
 
