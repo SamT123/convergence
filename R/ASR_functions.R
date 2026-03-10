@@ -576,6 +576,7 @@ reconstructNodeSequences = function(tree_tibble) {
   }
 
   tree_tibble$reconstructed_dna_sequence = reconstructed_dna_sequences
+  tree_tibble$parent_reconstructed_dna_sequence = reconstructed_dna_sequences[tree_tibble$parent]
 
   tree_tibble
 }

@@ -134,7 +134,7 @@ getCodonTable = function(tree_tibble, positions, min_prop = 0, min_count = 1) {
     positions,
     function(aa_pos) {
       codons = substr(
-        tree_tibble[["reconstructed_dna_sequence"]],
+        tree_tibble[["parent_reconstructed_dna_sequence"]],
         3 * (aa_pos - 1) + 1,
         aa_pos * 3
       )
@@ -163,21 +163,16 @@ getCodonTable = function(tree_tibble, positions, min_prop = 0, min_count = 1) {
   ) %>%
     tidyr::unnest(c(codon, props, nodes))
 
-  codon_table$tip_nodes = purrr::map(
-    codon_table$nodes,
-    ~ .x[!is.na(tree_tibble$dna_sequence[match(.x, tree_tibble$node)])]
-  )
-
   codon_table
 }
 
 
 splitFourFoldSynPositionsFromSequenceTable = function(
   sequences_at_four_fold_syn_sites,
-  tip_nodes
+  nodes
 ) {
   sequences_at_four_fold_syn_sites_idx = sequences_at_four_fold_syn_sites[
-    sequences_at_four_fold_syn_sites$node %in% tip_nodes,
+    sequences_at_four_fold_syn_sites$node %in% nodes,
     -ncol(sequences_at_four_fold_syn_sites)
   ]
 
@@ -235,12 +230,7 @@ addExpectedMutationsToCodonTable = function(
     # get sites which are four fold syn at the nodes where the codon being considered is present
     four_fold_syn_sites_idx = splitFourFoldSynPositionsFromSequenceTable(
       sequences_at_four_fold_syn_sites,
-      unique(
-        c(
-          codon_table[["nodes"]][[idx]],
-          codon_table[["tip_nodes"]][[idx]]
-        )
-      )
+      unique(codon_table[["nodes"]][[idx]])
     )
 
     # get tree size estimate + sample for the codon being considered, and interpolate nuc rates for the codon
