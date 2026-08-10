@@ -4,70 +4,70 @@
 #'
 #' Two types of node date are added: the collection date of the nearest tip, and the collection date of the nearest _descendant_ tip.
 #'@export
-addNearestDescendantNodeDates = function(tree_and_sequences) {
+addNearestDescendantNodeDates <- function(tree_and_sequences) {
   # clean collection dates
-  tree_and_sequences$tree_tibble$Collection_date_clean = tree_and_sequences$tree_tibble$Collection_date
+  tree_and_sequences$tree_tibble$Collection_date_clean <- tree_and_sequences$tree_tibble$Collection_date
 
   tree_and_sequences$tree_tibble$Collection_date_clean[
     tree_and_sequences$tree_tibble$Collection_date_clean <
       lubridate::as_date("1968-01-01")
-  ] = NA
+  ] <- NA
 
   tree_and_sequences$tree_tibble$Collection_date_clean[
     year(tree_and_sequences$tree_tibble$Collection_date_clean) !=
       tree_and_sequences$tree_tibble$year
-  ] = NA
+  ] <- NA
 
-  tip_dates = tree_and_sequences$tree_tibble$Collection_date_clean[
+  tip_dates <- tree_and_sequences$tree_tibble$Collection_date_clean[
     match(
       tree_and_sequences$tree$tip.label,
       tree_and_sequences$tree_tibble$label
     )
   ]
 
-  tip_dates = as.character(tip_dates)
+  tip_dates <- as.character(tip_dates)
 
   tip_dates[purrr::map_lgl(
     substr(tip_dates, 6, 10) == "01-01",
     isTRUE
-  )] = substr(
+  )] <- substr(
     tip_dates[purrr::map_lgl(substr(tip_dates, 6, 10) == "01-01", isTRUE)],
     1,
     4
   )
 
-  tip_dates[purrr::map_lgl(substr(tip_dates, 9, 10) == "01", isTRUE)] = substr(
+  tip_dates[purrr::map_lgl(substr(tip_dates, 9, 10) == "01", isTRUE)] <- substr(
     tip_dates[purrr::map_lgl(substr(tip_dates, 9, 10) == "01", isTRUE)],
     1,
     7
   )
 
   # nearest tip dates
-  nearest_tips = castor::find_nearest_tips(
+  nearest_tips <- castor::find_nearest_tips(
     tree = tree_and_sequences$tree,
     target_tips = which(!is.na(tip_dates))
   )
 
-  nearest_desc_tips = castor::find_nearest_tips(
+  nearest_desc_tips <- castor::find_nearest_tips(
     tree = tree_and_sequences$tree,
     target_tips = which(!is.na(tip_dates)),
     only_descending_tips = T
   )
 
-  node_dates_from_nearest_tips = c(
+  node_dates_from_nearest_tips <- c(
     tip_dates[nearest_tips$nearest_tip_per_tip],
     tip_dates[nearest_tips$nearest_tip_per_node]
   )
 
-  node_dates_from_nearest_desc_tips = c(
+  node_dates_from_nearest_desc_tips <- c(
     tip_dates[nearest_tips$nearest_tip_per_tip], # no desc from tip
     tip_dates[nearest_desc_tips$nearest_tip_per_node]
   )
 
-  tree_and_sequences$tree_tibble$estimated_date_nearest =
+  tree_and_sequences$tree_tibble$estimated_date_nearest <-
     node_dates_from_nearest_tips
 
-  tree_and_sequences$tree_tibble$estimated_date_nearest_desc =
+  tree_and_sequences$tree_tibble$estimated_date_nearest_desc <-
     node_dates_from_nearest_desc_tips
 
   tree_and_sequences
@@ -77,15 +77,19 @@ addNearestDescendantNodeDates = function(tree_and_sequences) {
 #'
 #' @param tree_and_sequences a list containing `tree` and `tree_tibble`
 #' @param reference_strain name of the strain to use as date reference (t=0). NA -> earliest date
+#' @param date_column the column of `sequences` containing the tip dates. A column of type `Date` is always full precision ("YYYY-MM-DD"); you must supply a character column of
+#'   `YYYY-MM-DD` / `YYYY-MM` / `YYYY` strings so chronumental can apply its
+#'   per-tip date error of 1 / 30 / 365 days.
 #' @param chronumental_path path to chronumental binary
 #' @param n_steps number of chronumental iterations
 #' @param genome_size nt sequence length when branch lengths are in units of substitutions/site
 #'
 #' Two types of node date are added: the collection date of the nearest tip, and the collection date of the nearest _descendant_ tip.
 #'@export
-toChronumentalTree = function(
+toChronumentalTree <- function(
   tree_and_sequences,
   reference_strain = NA,
+  date_column = "Collection_date",
   chronumental_path = NULL,
   n_steps = 10000,
   genome_size = NA
@@ -96,24 +100,23 @@ toChronumentalTree = function(
     )
   }
 
-  tree = treeio::as.phylo(
+  tree <- treeio::as.phylo(
     tree_and_sequences$tree_tibble,
     label = "label",
     branch.length = "branch.length"
   )
 
-  dates = tree_and_sequences$sequences %>%
-    select(Isolate_unique_identifier, Collection_date) %>%
-    rename(strain = Isolate_unique_identifier, date = Collection_date)
+  dates <- tree_and_sequences$sequences %>%
+    select(strain = Isolate_unique_identifier, date = all_of(date_column))
 
   if (is.na(reference_strain)) {
-    reference_strain = dates %>%
+    reference_strain <- dates %>%
       arrange(dates) %>%
       slice(1) %>%
       pluck("Isolate_unique_identifier")
   }
 
-  tree_and_dates = makeChronumentalTree(
+  tree_and_dates <- makeChronumentalTree(
     tree,
     dates,
     reference_strain,
@@ -122,11 +125,11 @@ toChronumentalTree = function(
     genome_size
   )
 
-  tree_and_sequences$original_tree = tree_and_sequences$tree
-  tree_and_sequences$original_tree_tibble = tree_and_sequences$tree_tibble
+  tree_and_sequences$original_tree <- tree_and_sequences$tree
+  tree_and_sequences$original_tree_tibble <- tree_and_sequences$tree_tibble
 
-  tree_and_sequences$tree = ape::ladderize(tree_and_dates$tree)
-  tree_and_sequences$tree_tibble = tree_and_sequences$tree %>%
+  tree_and_sequences$tree <- ape::ladderize(tree_and_dates$tree)
+  tree_and_sequences$tree_tibble <- tree_and_sequences$tree %>%
     treeio::as_tibble() %>%
     left_join(
       select(
@@ -148,7 +151,7 @@ toChronumentalTree = function(
 }
 
 
-makeChronumentalTree = function(
+makeChronumentalTree <- function(
   tree,
   dates,
   reference_strain,
@@ -161,22 +164,22 @@ makeChronumentalTree = function(
   }
 
   ### write tree --------------------
-  tree_file = fs::file_temp(ext = ".nwk")
+  tree_file <- fs::file_temp(ext = ".nwk")
   castor::write_tree(
     tree,
     file = tree_file
   )
 
   ### write dates --------------------
-  dates_file = fs::file_temp(ext = ".csv")
+  dates_file <- fs::file_temp(ext = ".csv")
   readr::write_csv(
     dates,
     file = dates_file
   )
 
   ### outfiles --------------------
-  tree_out_file = fs::file_temp(ext = ".nwk")
-  dates_out_file = fs::file_temp(ext = ".csv")
+  tree_out_file <- fs::file_temp(ext = ".nwk")
+  dates_out_file <- fs::file_temp(ext = ".csv")
 
   # fmt: skip
   chronumental_call = c(
@@ -190,7 +193,7 @@ makeChronumentalTree = function(
 )
 
   if (!is.na(genome_size)) {
-    chronumental_call = c(
+    chronumental_call <- c(
       chronumental_call,
       "--treat_mutation_units_as_normalised_to_genome_size",
       genome_size
@@ -199,9 +202,9 @@ makeChronumentalTree = function(
 
   system(paste(chronumental_call, collapse = " "))
 
-  tree_out = castor::read_tree(file = tree_out_file)
-  dates_out = readr::read_tsv(dates_out_file)
-  dates_out$predicted_date = lubridate::as_date(dates_out$predicted_date)
+  tree_out <- castor::read_tree(file = tree_out_file)
+  dates_out <- readr::read_tsv(dates_out_file)
+  dates_out$predicted_date <- lubridate::as_date(dates_out$predicted_date)
 
   list(
     tree = tree_out,

@@ -7,6 +7,7 @@
 toChronumentalTree(
   tree_and_sequences,
   reference_strain = NA,
+  date_column = "Collection_date",
   chronumental_path = NULL,
   n_steps = 10000,
   genome_size = NA
@@ -16,6 +17,10 @@ toChronumentalTree(
 \item{tree_and_sequences}{a list containing \code{tree} and \code{tree_tibble}}
 
 \item{reference_strain}{name of the strain to use as date reference (t=0). NA -> earliest date}
+
+\item{date_column}{the column of \code{sequences} containing the tip dates. A column of type \code{Date} is always full precision ("YYYY-MM-DD"); you must supply a character column of
+\code{YYYY-MM-DD} / \code{YYYY-MM} / \code{YYYY} strings so chronumental can apply its
+per-tip date error of 1 / 30 / 365 days.}
 
 \item{chronumental_path}{path to chronumental binary}
 
