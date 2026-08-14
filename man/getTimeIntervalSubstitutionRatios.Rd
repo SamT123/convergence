@@ -2,12 +2,13 @@
 % Please edit documentation in R/convenience_functions.R
 \name{getTimeIntervalSubstitutionRatios}
 \alias{getTimeIntervalSubstitutionRatios}
-\title{Title}
+\title{Calculate substitution ratios within time windows}
 \usage{
 getTimeIntervalSubstitutionRatios(
   tree_and_sequences,
   tree_info,
-  time_boundaries,
+  time_boundaries = NULL,
+  time_windows = NULL,
   positions = 1:550,
   date_column = "estimated_date_nearest",
   calculate_p_values = TRUE
@@ -18,7 +19,11 @@ getTimeIntervalSubstitutionRatios(
 
 \item{tree_info}{tree_info from \code{getTreeSizeAndNucRates}}
 
-\item{time_boundaries}{Boundaries between time intervals. The final interval will have boundaries (last_time_interval, Inf)}
+\item{time_boundaries}{Boundaries \code{b} between contiguous time windows,
+converted to the windows \verb{[b[i], b[i + 1] - 1 day]}, the last unbounded}
+
+\item{time_windows}{List of \code{c(start, end)} date pairs. \code{NA} end means
+unbounded. A named list sets the names of the returned list}
 
 \item{positions}{amino acid positions to analyse}
 
@@ -29,6 +34,11 @@ FALSE (skip p-values), or a list with optional elements: \code{aas} (positions f
 \code{nucs} (positions for nucleotide p-values), \code{min_LCR} (minimum log convergence ratio threshold),
 \code{max_LCR} (maximum log convergence ratio threshold). Default TRUE}
 }
+\value{
+Named list of \code{getSubstitutionRatios} output, one element per
+window. Empty windows are dropped. Default names are \code{"<start> to <end>"}
+}
 \description{
-Title
+Supply either \code{time_boundaries} or \code{time_windows}. Windows are inclusive at
+both ends, and may overlap.
 }

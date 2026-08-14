@@ -1,8 +1,18 @@
-#' Title
+parseDates <- function(x) {
+  lubridate::as_date(x, format = c("%Y-%m-%d", "%Y-%m", "%Y"))
+}
+
+#' Calculate substitution ratios within time windows
+#'
+#' Supply either `time_boundaries` or `time_windows`. Windows are inclusive at
+#' both ends, and may overlap.
 #'
 #' @param tree_and_sequences tree_and_sequences list
 #' @param tree_info tree_info from `getTreeSizeAndNucRates`
-#' @param time_boundaries Boundaries between time intervals. The final interval will have boundaries (last_time_interval, Inf)
+#' @param time_boundaries Boundaries `b` between contiguous time windows,
+#'   converted to the windows `[b[i], b[i + 1] - 1 day]`, the last unbounded
+#' @param time_windows List of `c(start, end)` date pairs. `NA` end means
+#'   unbounded. A named list sets the names of the returned list
 #' @param positions amino acid positions to analyse
 #' @param date_column column to use for date filtering
 #' @param calculate_p_values controls p-value calculation. Can be TRUE (calculate for all positions),
@@ -10,44 +20,56 @@
 #'   `nucs` (positions for nucleotide p-values), `min_LCR` (minimum log convergence ratio threshold),
 #'   `max_LCR` (maximum log convergence ratio threshold). Default TRUE
 #'
+#' @return Named list of `getSubstitutionRatios` output, one element per
+#'   window. Empty windows are dropped. Default names are `"<start> to <end>"`
+#'
 #' @export
-getTimeIntervalSubstitutionRatios = function(
+getTimeIntervalSubstitutionRatios <- function(
   tree_and_sequences,
   tree_info,
-  time_boundaries,
+  time_boundaries = NULL,
+  time_windows = NULL,
   positions = 1:550,
   date_column = "estimated_date_nearest",
   calculate_p_values = TRUE
 ) {
-  time_boundaries = c(time_boundaries, "2100-01-01")
+  if (is.null(time_boundaries) == is.null(time_windows)) {
+    stop("supply exactly one of `time_boundaries` and `time_windows`")
+  }
+
+  if (is.null(time_windows)) {
+    boundaries <- parseDates(time_boundaries)
+    time_windows <- purrr::map2(boundaries, c(boundaries[-1] - 1, NA), c)
+  }
+
+  time_windows <- purrr::map(time_windows, parseDates)
+  window_names <- names(time_windows)
+  if (is.null(window_names)) {
+    window_names <- purrr::map_chr(time_windows, \(window) {
+      end <- window[[2]]
+      paste0(window[[1]], " to ", if (is.na(end)) "Inf" else as.character(end))
+    })
+  }
+  stopifnot(!anyDuplicated(window_names))
 
   stopifnot(date_column %in% colnames(tree_and_sequences$tree_tibble))
-  tree_and_sequences$tree_tibble[["DATECOLUMN"]] =
-    tree_and_sequences$tree_tibble[[date_column]]
+  dates <- parseDates(tree_and_sequences$tree_tibble[[date_column]])
 
-  ratio_list = list()
-  for (i in seq_along(time_boundaries[-1])) {
-    tree_tibble_filtered = filter(
-      tree_and_sequences$tree_tibble,
-      lubridate::as_date(
-        DATECOLUMN,
-        format = c("%Y-%m-%d", "%Y-%m", "%Y")
-      ) >=
-        lubridate::as_date(time_boundaries[[i]]),
-      lubridate::as_date(
-        DATECOLUMN,
-        format = c("%Y-%m-%d", "%Y-%m", "%Y")
-      ) <
-        lubridate::as_date(time_boundaries[[i + 1]])
-    )
+  ratio_list <- list()
+  for (i in seq_along(time_windows)) {
+    window <- time_windows[[i]]
+    in_window <- !is.na(dates) &
+      dates >= window[[1]] &
+      (is.na(window[[2]]) | dates <= window[[2]])
 
-    if (nrow(tree_tibble_filtered) == 0) {
+    if (!any(in_window)) {
+      message("no branches in window ", window_names[[i]], " - skipping")
       next
     }
 
-    ratios = getSubstitutionRatios(
+    ratio_list[[window_names[[i]]]] <- getSubstitutionRatios(
       list(
-        tree_tibble = tree_tibble_filtered
+        tree_tibble = tree_and_sequences$tree_tibble[in_window, ]
       ),
       tree_info$nuc_rates,
       tree_info$tree_size_fn,
@@ -55,18 +77,6 @@ getTimeIntervalSubstitutionRatios = function(
       positions = positions,
       calculate_p_values = calculate_p_values
     )
-
-    time_interval_name = paste0(
-      as.character(time_boundaries[[i]]),
-      " to ",
-      ifelse(
-        i == length(time_boundaries) - 1,
-        "Inf",
-        as.character(time_boundaries[[i + 1]])
-      )
-    )
-
-    ratio_list[[time_interval_name]] = ratios
   }
 
   ratio_list
@@ -81,37 +91,37 @@ getTimeIntervalSubstitutionRatios = function(
 #' @param comparison_sequence for genetic context information
 #'
 #'@export
-getInfoAboutNodes = function(
+getInfoAboutNodes <- function(
   tree_and_sequences,
   nodes,
   comparison_sequence
 ) {
-  recent_occurrences = tree_and_sequences$tree_tibble %>%
+  recent_occurrences <- tree_and_sequences$tree_tibble %>%
     filter(node %in% nodes)
 
-  recent_occurrence_descs = purrr::map(
+  recent_occurrence_descs <- purrr::map(
     recent_occurrences$node,
     ~ c(.x, fastGetDescendants(tree_and_sequences$tree, .x))
   )
 
-  recent_occurrence_descs_info = purrr::map(
+  recent_occurrence_descs_info <- purrr::map(
     recent_occurrence_descs,
     function(desc_nodes) {
-      node_root_sequence_dna = filter(
+      node_root_sequence_dna <- filter(
         tree_and_sequences$tree_tibble,
         node == desc_nodes[[1]]
       )$reconstructed_dna_sequence
 
-      node_root_sequence_aa = node_root_sequence_dna %>%
+      node_root_sequence_aa <- node_root_sequence_dna %>%
         seqUtils::translate(seqUtils::alaska_232_2015_aas)
 
-      root_diff_to_comparison_comparison_sequence = seqUtils::get_substitutions(
+      root_diff_to_comparison_comparison_sequence <- seqUtils::get_substitutions(
         comparison_sequence,
         node_root_sequence_aa
       ) %>%
         paste(collapse = " ")
 
-      sequences = filter(
+      sequences <- filter(
         tree_and_sequences$tree_tibble,
         node %in% desc_nodes
       ) %>%
@@ -132,8 +142,8 @@ getInfoAboutNodes = function(
             dna_diff_from_root,
             aa_diff_from_root,
             function(dna, aa) {
-              dna_at = ceiling(as.integer(stringr::str_sub(dna, 2, -2)) / 3)
-              aa_at = as.integer(stringr::str_sub(aa, 2, -2))
+              dna_at <- ceiling(as.integer(stringr::str_sub(dna, 2, -2)) / 3)
+              aa_at <- as.integer(stringr::str_sub(aa, 2, -2))
 
               dna[!dna_at %in% aa_at]
             }
@@ -166,7 +176,7 @@ getInfoAboutNodes = function(
 #' @param sequences a vector of sequences
 #'
 #' @export
-getConsensus = function(sequences) {
+getConsensus <- function(sequences) {
   Biostrings::consensusMatrix(sequences) %>%
     {
       apply(., 2, \(x) {
@@ -186,20 +196,20 @@ getConsensus = function(sequences) {
 #' @param allow_ambiguous in cases where the aa and nt specification matches multiple branches, should an error be thrown (default), or should the branch with the largest number of descendant tips be used?
 #'
 #' @export
-findBranch = function(
+findBranch <- function(
   tree_tibble,
   target_aa_substitutions,
   target_nt_mutations,
   allow_ambiguous = F
 ) {
-  possible_ancestors = tree_tibble %>%
+  possible_ancestors <- tree_tibble %>%
     as_tibble()
 
   # must have specified aa substitutions
   for (s in target_aa_substitutions) {
-    at = as.integer(stringr::str_sub(s, 1, -2))
-    to = stringr::str_sub(s, -1, -1)
-    possible_ancestors = filter(
+    at <- as.integer(stringr::str_sub(s, 1, -2))
+    to <- stringr::str_sub(s, -1, -1)
+    possible_ancestors <- filter(
       possible_ancestors,
       stringr::str_sub(reconstructed_aa_sequence, at, at) == to
     )
@@ -207,9 +217,9 @@ findBranch = function(
 
   # must have specified nt mutations
   for (t in target_nt_mutations) {
-    at = as.integer(stringr::str_sub(t, 1, -2))
-    to = stringr::str_sub(t, -1, -1)
-    possible_ancestors = filter(
+    at <- as.integer(stringr::str_sub(t, 1, -2))
+    to <- stringr::str_sub(t, -1, -1)
+    possible_ancestors <- filter(
       possible_ancestors,
       stringr::str_sub(reconstructed_dna_sequence, at, at) == to
     )
@@ -217,7 +227,7 @@ findBranch = function(
 
   # one of the specified nt mutations or aa substitutions must have occurred on the branch
 
-  possible_ancestors = filter(
+  possible_ancestors <- filter(
     possible_ancestors,
     purrr::map_lgl(
       aa_mutations_nonsyn,
@@ -236,7 +246,7 @@ findBranch = function(
       stop("more than one branch found")
     }
 
-    possible_ancestors = arrange(possible_ancestors, -num_descendant_tips)
+    possible_ancestors <- arrange(possible_ancestors, -num_descendant_tips)
     message(
       "more than one branch found. returning branch with ",
       possible_ancestors$num_descendant_tips[[1]],
@@ -255,16 +265,16 @@ findBranch = function(
 #' @param branch branch to keep descendants of
 #'
 #' @export
-trimTreeAndSequences = function(
+trimTreeAndSequences <- function(
   tree_and_sequences,
   branch
 ) {
-  treedata = treeio::as.treedata(
+  treedata <- treeio::as.treedata(
     tree_and_sequences$tree_tibble,
     label = "label"
   )
 
-  subset_treedata = tidytree::keep.tip(
+  subset_treedata <- tidytree::keep.tip(
     treedata,
     treeio::offspring(
       treedata,
@@ -273,7 +283,7 @@ trimTreeAndSequences = function(
     )
   )
 
-  subset_tree_and_sequences = list(
+  subset_tree_and_sequences <- list(
     tree = treeio::as.phylo(treeio::as_tibble(subset_treedata)),
     tree_tibble = treeio::as_tibble(subset_treedata),
     sequences = filter(
@@ -282,7 +292,7 @@ trimTreeAndSequences = function(
     )
   )
 
-  lad = ladderizeTreeAndTib(
+  lad <- ladderizeTreeAndTib(
     subset_tree_and_sequences$tree,
     subset_tree_and_sequences$tree_tibble
   )
