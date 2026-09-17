@@ -83,6 +83,12 @@ addNearestDescendantNodeDates <- function(tree_and_sequences) {
 #' @param chronumental_path path to chronumental binary
 #' @param n_steps number of chronumental iterations
 #' @param genome_size nt sequence length when branch lengths are in units of substitutions/site
+#' @param clock_filter_iqd discard the dates of tips whose root-to-tip divergence sits more than
+#'   this many interquartile ranges from chronumental's regression line. 0, the default, leaves
+#'   its filter off. It masks those dates rather than dropping the tips, so a subclade whose
+#'   members are all filtered loses every date constraint and floats
+#' @param clock molecular clock rate in substitutions/site/year, held fixed rather than fitted.
+#'   NA lets chronumental estimate it by Theil-Sen root-to-tip regression
 #'
 #' Two types of node date are added: the collection date of the nearest tip, and the collection date of the nearest _descendant_ tip.
 #'@export
@@ -92,7 +98,9 @@ toChronumentalTree <- function(
   date_column = "Collection_date",
   chronumental_path = NULL,
   n_steps = 10000,
-  genome_size = NA
+  genome_size = NA,
+  clock_filter_iqd = 0,
+  clock = NA
 ) {
   if ("nt_mutations" %in% colnames(tree_and_sequences$tree_tibble)) {
     stop(
@@ -122,7 +130,9 @@ toChronumentalTree <- function(
     reference_strain,
     chronumental_path,
     n_steps,
-    genome_size
+    genome_size,
+    clock_filter_iqd,
+    clock
   )
 
   tree_and_sequences$original_tree <- tree_and_sequences$tree
@@ -157,7 +167,9 @@ makeChronumentalTree <- function(
   reference_strain,
   chronumental_path,
   n_steps = 10000,
-  genome_size
+  genome_size,
+  clock_filter_iqd = 0,
+  clock = NA
 ) {
   if (!is.null(chronumental_path)) {
     add_to_PATH(chronumental_path)
@@ -198,6 +210,18 @@ makeChronumentalTree <- function(
       "--treat_mutation_units_as_normalised_to_genome_size",
       genome_size
     )
+  }
+
+  if (clock_filter_iqd > 0) {
+    chronumental_call <- c(
+      chronumental_call,
+      "--clock_filter_iqd",
+      clock_filter_iqd
+    )
+  }
+
+  if (!is.na(clock)) {
+    chronumental_call <- c(chronumental_call, "--clock", clock)
   }
 
   system(paste(chronumental_call, collapse = " "))

@@ -10,7 +10,9 @@ toChronumentalTree(
   date_column = "Collection_date",
   chronumental_path = NULL,
   n_steps = 10000,
-  genome_size = NA
+  genome_size = NA,
+  clock_filter_iqd = 0,
+  clock = NA
 )
 }
 \arguments{
@@ -26,7 +28,15 @@ per-tip date error of 1 / 30 / 365 days.}
 
 \item{n_steps}{number of chronumental iterations}
 
-\item{genome_size}{nt sequence length when branch lengths are in units of substitutions/site
+\item{genome_size}{nt sequence length when branch lengths are in units of substitutions/site}
+
+\item{clock_filter_iqd}{discard the dates of tips whose root-to-tip divergence sits more than
+this many interquartile ranges from chronumental's regression line. 0, the default, leaves
+its filter off. It masks those dates rather than dropping the tips, so a subclade whose
+members are all filtered loses every date constraint and floats}
+
+\item{clock}{molecular clock rate in substitutions/site/year, held fixed rather than fitted.
+NA lets chronumental estimate it by Theil-Sen root-to-tip regression
 
 Two types of node date are added: the collection date of the nearest tip, and the collection date of the nearest \emph{descendant} tip.}
 }
